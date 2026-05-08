@@ -9,6 +9,7 @@ const links = [
   { href: "/flashcard", label: "Flashcard" },
   { href: "/quiz", label: "Quiz" },
   { href: "/story", label: "Mini Story" },
+  { href: "/verb-forms", label: "Verb 3 ช่อง" },
 ];
 
 export default function Navbar() {

@@ -29,6 +29,13 @@ const features = [
     desc: "เลือก 5 คำศัพท์ให้ AI สร้าง story สั้น ๆ เรียนรู้ความหมายผ่าน context จริง",
     color: "#f97316",
   },
+  {
+    href: "/verb-forms",
+    icon: "📋",
+    title: "Verb 3 ช่อง",
+    desc: "สุ่มคำกริยาจากคลัง ดู V1 / V2 / V3 พร้อมคำแปล แยก Regular / Irregular",
+    color: "#10b981",
+  },
 ];
 
 export default function HomePage() {
