@@ -22,6 +22,13 @@ const features = [
     desc: "ทดสอบความรู้ด้วยข้อสอบ Multiple Choice ดูสกอร์และสรุปผลทันที",
     color: "#a78bfa",
   },
+  {
+    href: "/story",
+    icon: "✨",
+    title: "Mini Story",
+    desc: "เลือก 5 คำศัพท์ให้ AI สร้าง story สั้น ๆ เรียนรู้ความหมายผ่าน context จริง",
+    color: "#f97316",
+  },
 ];
 
 export default function HomePage() {

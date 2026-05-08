@@ -1,16 +1,19 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 const links = [
   { href: "/", label: "หน้าแรก" },
   { href: "/vocabulary", label: "คำศัพท์" },
   { href: "/flashcard", label: "Flashcard" },
   { href: "/quiz", label: "Quiz" },
+  { href: "/story", label: "Mini Story" },
 ];
 
 export default function Navbar() {
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <nav
@@ -30,15 +33,15 @@ export default function Navbar() {
           Vocab<span style={{ color: "#e2e8f0" }}>App</span>
         </Link>
 
-        {/* Links */}
-        <div className="flex gap-0.5 sm:gap-1 ml-auto">
+        {/* Desktop Links */}
+        <div className="hidden sm:flex gap-1 ml-auto">
           {links.map((l) => {
             const active = pathname === l.href;
             return (
               <Link
                 key={l.href}
                 href={l.href}
-                className="rounded-lg no-underline transition-all duration-150 whitespace-nowrap px-2 py-1.5 text-xs sm:px-[0.9rem] sm:py-[0.4rem] sm:text-[0.9rem]"
+                className="rounded-lg no-underline transition-all duration-150 whitespace-nowrap px-[0.9rem] py-[0.4rem] text-[0.9rem]"
                 style={{
                   fontWeight: active ? 600 : 400,
                   color: active ? "#fff" : "#94a3b8",
@@ -50,7 +53,67 @@ export default function Navbar() {
             );
           })}
         </div>
+
+        {/* Hamburger Button (mobile only) */}
+        <button
+          className="sm:hidden ml-auto flex flex-col justify-center items-center w-9 h-9 gap-[5px]"
+          onClick={() => setMenuOpen((prev) => !prev)}
+          aria-label="Toggle menu"
+          aria-expanded={menuOpen}
+        >
+          <span
+            className="block w-5 h-[2px] rounded transition-all duration-200"
+            style={{
+              background: "#e2e8f0",
+              transform: menuOpen ? "translateY(7px) rotate(45deg)" : "none",
+            }}
+          />
+          <span
+            className="block w-5 h-[2px] rounded transition-all duration-200"
+            style={{
+              background: "#e2e8f0",
+              opacity: menuOpen ? 0 : 1,
+            }}
+          />
+          <span
+            className="block w-5 h-[2px] rounded transition-all duration-200"
+            style={{
+              background: "#e2e8f0",
+              transform: menuOpen ? "translateY(-7px) rotate(-45deg)" : "none",
+            }}
+          />
+        </button>
       </div>
+
+      {/* Mobile Dropdown Menu */}
+      {menuOpen && (
+        <div
+          className="sm:hidden flex flex-col border-t px-3 py-2"
+          style={{
+            background: "rgba(26,26,36,0.98)",
+            borderColor: "var(--card-border)",
+          }}
+        >
+          {links.map((l) => {
+            const active = pathname === l.href;
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                onClick={() => setMenuOpen(false)}
+                className="rounded-lg no-underline transition-all duration-150 px-3 py-2.5 text-sm"
+                style={{
+                  fontWeight: active ? 600 : 400,
+                  color: active ? "#fff" : "#94a3b8",
+                  background: active ? "var(--accent)" : "transparent",
+                }}
+              >
+                {l.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </nav>
   );
 }
