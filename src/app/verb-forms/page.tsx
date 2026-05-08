@@ -87,7 +87,7 @@ export default function VerbFormsPage() {
       const data = res.data;
 
       if (data.seededTotal === 0) {
-        setError("ยังไม่มีข้อมูลในฐานข้อมูล กรุณารัน: npm run seed:verb-forms ใน backend ก่อน");
+        setError("ยังไม่มีข้อมูลในฐานข้อมูล กรุณาติดต่อผู้ดูแลระบบ");
         return;
       }
 

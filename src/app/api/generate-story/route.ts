@@ -33,7 +33,6 @@ export async function POST(req: NextRequest) {
   }
 
   const prompt = `You are an English teacher writing short stories for Thai learners.\n\nWrite a short story (5–7 sentences) in simple English. You MUST use every single one of the following words at least once. Do NOT skip any word:\n${words.map((w, i) => `${i + 1}. ${w.word} (${w.meaning})`).join("\n")}\n\nRules:\n- Every word listed above must appear in the story.\n- Use simple vocabulary suitable for intermediate learners.\n- The story must flow naturally and make sense.\n- Output only the story text. No titles, no word list, no explanations.\n\nWords used so far: (none — you must use all ${words.length} words above)`;
-  console.log("Generated prompt for Gemini:", prompt);
   let geminiRes: Response;
   try {
     geminiRes = await fetch(
