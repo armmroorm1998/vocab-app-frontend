@@ -300,7 +300,7 @@ export default function StoryPage() {
         const resetAt = getQuotaResetAt()!;
         setQuotaResetAtState(resetAt);
       } else if (!res.ok || !data.story) {
-        setError(data.error ?? "เกิดข้อผิดพลาด กรุณาลองใหม่");
+        setError("เกิดข้อผิดพลาด กรุณาลองใหม่");
       } else {
         setStory(data.story);
         localStorage.setItem(COOLDOWN_KEY, String(Date.now()));
