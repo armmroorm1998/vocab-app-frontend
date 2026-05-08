@@ -8,7 +8,6 @@ interface VerbFormResult {
   meaning: string;
   v2: string;
   v3: string;
-  type: "regular" | "irregular";
 }
 
 interface BackendVerbForm {
@@ -17,7 +16,6 @@ interface BackendVerbForm {
   meaning: string;
   v2: string;
   v3: string;
-  verbType: string;
 }
 
 interface VerbFormApiResponse {
@@ -102,7 +100,6 @@ export default function VerbFormsPage() {
           meaning: item.meaning,
           v2: item.v2,
           v3: item.v3,
-          type: item.verbType as "regular" | "irregular",
         })),
       );
       setStarted(true);
@@ -112,9 +109,6 @@ export default function VerbFormsPage() {
       setLoading(false);
     }
   };
-
-  const irregular = results.filter((r) => r.type === "irregular");
-  const regular = results.filter((r) => r.type === "regular");
 
   return (
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
@@ -234,36 +228,6 @@ export default function VerbFormsPage() {
       {/* Results */}
       {results.length > 0 && (
         <>
-          {/* Stats */}
-          <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.25rem", flexWrap: "wrap" }}>
-            <span
-              style={{
-                background: "rgba(239,68,68,0.12)",
-                border: "1px solid rgba(239,68,68,0.3)",
-                borderRadius: 8,
-                padding: "0.3rem 0.85rem",
-                color: "#fca5a5",
-                fontSize: "0.82rem",
-                fontWeight: 600,
-              }}
-            >
-              ⚡ Irregular: {irregular.length} คำ
-            </span>
-            <span
-              style={{
-                background: "rgba(34,211,238,0.1)",
-                border: "1px solid rgba(34,211,238,0.25)",
-                borderRadius: 8,
-                padding: "0.3rem 0.85rem",
-                color: "#67e8f9",
-                fontSize: "0.82rem",
-                fontWeight: 600,
-              }}
-            >
-              ✅ Regular: {regular.length} คำ
-            </span>
-          </div>
-
           {/* Table */}
           <div
             style={{
@@ -322,7 +286,7 @@ export default function VerbFormsPage() {
                 {/* V2 */}
                 <span
                   style={{
-                    color: r.type === "irregular" ? "#fca5a5" : "#86efac",
+                    color: "#86efac",
                     fontWeight: 600,
                     fontSize: "0.95rem",
                   }}
@@ -333,7 +297,7 @@ export default function VerbFormsPage() {
                 {/* V3 */}
                 <span
                   style={{
-                    color: r.type === "irregular" ? "#fca5a5" : "#86efac",
+                    color: "#86efac",
                     fontWeight: 600,
                     fontSize: "0.95rem",
                   }}
@@ -350,31 +314,11 @@ export default function VerbFormsPage() {
                     onClick={() => handleSpeak(r.word)}
                     active={speakingWord === r.word}
                   />
-                  <span
-                    style={{
-                      fontSize: "0.65rem",
-                      fontWeight: 700,
-                      padding: "0.1rem 0.4rem",
-                      borderRadius: 4,
-                      background:
-                        r.type === "irregular"
-                          ? "rgba(239,68,68,0.15)"
-                          : "rgba(34,211,238,0.1)",
-                      color: r.type === "irregular" ? "#fca5a5" : "#67e8f9",
-                      border: `1px solid ${r.type === "irregular" ? "rgba(239,68,68,0.3)" : "rgba(34,211,238,0.25)"}`,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {r.type === "irregular" ? "irreg." : "reg."}
-                  </span>
                 </div>
               </div>
             ))}
           </div>
 
-          <p style={{ color: "#475569", fontSize: "0.78rem", marginTop: "0.75rem", textAlign: "center" }}>
-            🔴 แดง = Irregular &nbsp;|&nbsp; 🟢 เขียว = Regular
-          </p>
         </>
       )}
 
