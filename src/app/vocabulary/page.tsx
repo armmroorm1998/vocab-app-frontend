@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import CustomSelect from "@/components/CustomSelect";
 import api from "@/lib/api";
+import { useSpeech } from "@/lib/useSpeech";
 import {
   Vocabulary,
   EPartOfSpeech,
@@ -31,7 +32,35 @@ function Badge({ pos }: { pos: EPartOfSpeech }) {
   );
 }
 
-function VocabCard({ v }: { v: Vocabulary }) {
+function SpeakerIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      width="16"
+      height="16"
+    >
+      {active ? (
+        // speaker with sound waves
+        <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 0 0 1.5 12c0 .898.121 1.768.35 2.595.341 1.24 1.518 1.905 2.659 1.905h1.93l4.5 4.5c.945.945 2.561.276 2.561-1.06V4.06ZM18.584 5.106a.75.75 0 0 1 1.06 0c3.808 3.807 3.808 9.98 0 13.788a.75.75 0 0 1-1.06-1.06 8.25 8.25 0 0 0 0-11.668.75.75 0 0 1 0-1.06Z" />
+      ) : (
+        // speaker only (muted / idle)
+        <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 0 0 1.5 12c0 .898.121 1.768.35 2.595.341 1.24 1.518 1.905 2.659 1.905h1.93l4.5 4.5c.945.945 2.561.276 2.561-1.06V4.06ZM17.78 9.22a.75.75 0 1 0-1.06 1.06L18.44 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L19.5 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L20.56 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L19.5 10.94l-1.72-1.72Z" />
+      )}
+    </svg>
+  );
+}
+
+function VocabCard({
+  v,
+  onSpeak,
+  isSpeaking,
+}: {
+  v: Vocabulary;
+  onSpeak: (word: string) => void;
+  isSpeaking: boolean;
+}) {
   return (
     <div
       style={{
@@ -49,6 +78,27 @@ function VocabCard({ v }: { v: Vocabulary }) {
           {v.word}
         </span>
         <Badge pos={v.partOfSpeech} />
+        <button
+          onClick={() => onSpeak(v.word)}
+          title={`ออกเสียง "${v.word}"`}
+          style={{
+            marginLeft: "auto",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 30,
+            height: 30,
+            borderRadius: 8,
+            border: "1px solid var(--card-border)",
+            background: isSpeaking ? "var(--accent)" : "transparent",
+            color: isSpeaking ? "#fff" : "#94a3b8",
+            cursor: "pointer",
+            transition: "all 0.15s",
+            flexShrink: 0,
+          }}
+        >
+          <SpeakerIcon active={isSpeaking} />
+        </button>
       </div>
 
       {(v.pronunciationThai || v.ipa) && (
@@ -94,6 +144,8 @@ function VocabCard({ v }: { v: Vocabulary }) {
 }
 
 export default function VocabularyPage() {
+  const { speak, speaking, cancel } = useSpeech();
+  const [speakingId, setSpeakingId] = useState<number | null>(null);
   const [items, setItems] = useState<Vocabulary[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -194,7 +246,20 @@ export default function VocabularyPage() {
           }}
         >
           {items.map((v) => (
-            <VocabCard key={v.id} v={v} />
+            <VocabCard
+              key={v.id}
+              v={v}
+              isSpeaking={speaking && speakingId === v.id}
+              onSpeak={(word) => {
+                if (speaking && speakingId === v.id) {
+                  cancel();
+                  setSpeakingId(null);
+                } else {
+                  setSpeakingId(v.id);
+                  speak(word);
+                }
+              }}
+            />
           ))}
         </div>
       )}
