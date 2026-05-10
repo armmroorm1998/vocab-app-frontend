@@ -23,17 +23,17 @@ const features = [
     color: "#a78bfa",
   },
   {
-    href: "/story",
-    icon: "✨",
-    title: "Mini Story",
-    desc: "เลือก 5 คำศัพท์ให้ AI สร้าง story สั้น ๆ เรียนรู้ความหมายผ่าน context จริง",
-    color: "#f97316",
+    href: "/fill-blank",
+    icon: "📝",
+    title: "เติมคำ",
+    desc: "ฝึกเติมคำในช่องว่างจากประโยคตัวอย่างจริง เลือกคำตอบที่ถูกต้องจาก 4 ตัวเลือก",
+    color: "#f59e0b",
   },
   {
     href: "/verb-forms",
     icon: "📋",
     title: "Verb 3 ช่อง",
-    desc: "สุ่มคำกริยาจากคลัง ดู V1 / V2 / V3 พร้อมคำแปล แยก Regular / Irregular",
+    desc: "สุ่มคำกริยาจากคลัง ดู V1 / V2 / V3",
     color: "#10b981",
   },
 ];

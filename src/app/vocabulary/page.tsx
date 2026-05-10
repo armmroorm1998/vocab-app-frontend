@@ -5,13 +5,24 @@ import api from "@/lib/api";
 import { useSpeech } from "@/lib/useSpeech";
 import {
   Vocabulary,
+  Category,
+  ECefrLevel,
   EPartOfSpeech,
   POS_LABELS,
   POS_COLORS,
   VocabListResponse,
+  ApiResponse,
 } from "@/types";
 
-const ALL_POS = Object.values(EPartOfSpeech);
+const ALL_CEFR = Object.values(ECefrLevel);
+const CEFR_COLORS: Record<ECefrLevel, string> = {
+  [ECefrLevel.A1]: "#4ade80",
+  [ECefrLevel.A2]: "#86efac",
+  [ECefrLevel.B1]: "#60a5fa",
+  [ECefrLevel.B2]: "#818cf8",
+  [ECefrLevel.C1]: "#f472b6",
+  [ECefrLevel.C2]: "#fb7185",
+};
 
 function Badge({ pos }: { pos: EPartOfSpeech }) {
   return (
@@ -78,6 +89,22 @@ function VocabCard({
           {v.word}
         </span>
         <Badge pos={v.partOfSpeech} />
+        {v.cefrLevel && (
+          <span
+            style={{
+              display: "inline-block",
+              padding: "0.1rem 0.45rem",
+              borderRadius: 5,
+              fontSize: "0.7rem",
+              fontWeight: 700,
+              background: `${CEFR_COLORS[v.cefrLevel]}22`,
+              color: CEFR_COLORS[v.cefrLevel],
+              border: `1px solid ${CEFR_COLORS[v.cefrLevel]}55`,
+            }}
+          >
+            {v.cefrLevel}
+          </span>
+        )}
         <button
           onClick={() => onSpeak(v.word)}
           title={`ออกเสียง "${v.word}"`}
@@ -100,6 +127,24 @@ function VocabCard({
           <SpeakerIcon active={isSpeaking} />
         </button>
       </div>
+
+      {v.category && (
+        <span
+          style={{
+            display: "inline-block",
+            padding: "0.1rem 0.5rem",
+            borderRadius: 6,
+            fontSize: "0.7rem",
+            fontWeight: 600,
+            background: "rgba(99,102,241,0.15)",
+            color: "#a5b4fc",
+            border: "1px solid rgba(99,102,241,0.3)",
+            alignSelf: "flex-start",
+          }}
+        >
+          🏷 {v.category.nameTh ?? v.category.name}
+        </span>
+      )}
 
       {(v.pronunciationThai || v.ipa) && (
         <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
@@ -146,12 +191,14 @@ function VocabCard({
 export default function VocabularyPage() {
   const { speak, speaking, cancel } = useSpeech();
   const [speakingId, setSpeakingId] = useState<number | null>(null);
+  const [categoryId, setCategoryId] = useState<number | "">("");
+  const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Vocabulary[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
-  const [pos, setPos] = useState<EPartOfSpeech | "">("");
+  const [cefrLevel, setCefrLevel] = useState<ECefrLevel | "">("");
   const [loading, setLoading] = useState(false);
   const LIMIT = 20;
 
@@ -160,7 +207,8 @@ export default function VocabularyPage() {
     try {
       const params: Record<string, string | number> = { page, limit: LIMIT };
       if (search) params.search = search;
-      if (pos) params.partOfSpeech = pos;
+      if (cefrLevel) params.cefrLevel = cefrLevel;
+      if (categoryId) params.categoryId = categoryId;
       const res = await api.get<VocabListResponse>("/vocabularies", { params });
       setItems(res.data.body);
       setTotal(res.data.total ?? 0);
@@ -169,9 +217,23 @@ export default function VocabularyPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, pos]);
+  }, [page, search, cefrLevel, categoryId]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
+
+  // Load categories once
+  const loadCategories = useCallback(async () => {
+    try {
+      const res = await api.get<ApiResponse<Category[]>>("/categories");
+      setCategories(res.data.body);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { loadCategories(); }, [loadCategories]);
 
   // Debounce search input
   useEffect(() => {
@@ -210,14 +272,26 @@ export default function VocabularyPage() {
         />
         <div style={{ flex: "0 0 180px" }}>
           <CustomSelect
-            value={pos}
-            onChange={(v) => { setPos(v as EPartOfSpeech | ""); setPage(1); }}
+            value={cefrLevel}
+            onChange={(v) => { setCefrLevel(v as ECefrLevel | ""); setPage(1); }}
             options={[
-              { value: "", label: "ทุก Part of Speech" },
-              ...ALL_POS.map((p) => ({ value: p, label: POS_LABELS[p] })),
+              { value: "", label: "ทุกระดับ CEFR" },
+              ...ALL_CEFR.map((l) => ({ value: l, label: l })),
             ]}
           />
         </div>
+        {categories.length > 0 && (
+          <div style={{ flex: "0 0 180px" }}>
+            <CustomSelect
+              value={String(categoryId)}
+              onChange={(v) => { setCategoryId(v === "" ? "" : Number(v)); setPage(1); }}
+              options={[
+                { value: "", label: "ทุกหมวดหมู่" },
+                ...categories.map((c) => ({ value: String(c.id), label: c.nameTh ?? c.name })),
+              ]}
+            />
+          </div>
+        )}
       </div>
 
       {/* Count */}
