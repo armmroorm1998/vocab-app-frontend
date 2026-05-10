@@ -31,7 +31,11 @@ export default function Navbar() {
           className="shrink-0 font-bold text-base sm:text-[1.2rem] tracking-tight no-underline"
           style={{ color: "var(--accent-hover)", letterSpacing: "-0.5px" }}
         >
-          Vocab<span style={{ color: "#e2e8f0" }}>App</span>
+          My<span style={{
+              background: "linear-gradient(135deg,#6366f1,#a78bfa,#22d3ee)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}>Vocab</span>
         </Link>
 
         {/* Desktop Links */}
