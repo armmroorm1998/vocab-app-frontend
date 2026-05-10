@@ -128,24 +128,6 @@ function VocabCard({
         </button>
       </div>
 
-      {v.category && (
-        <span
-          style={{
-            display: "inline-block",
-            padding: "0.1rem 0.5rem",
-            borderRadius: 6,
-            fontSize: "0.7rem",
-            fontWeight: 600,
-            background: "rgba(99,102,241,0.15)",
-            color: "#a5b4fc",
-            border: "1px solid rgba(99,102,241,0.3)",
-            alignSelf: "flex-start",
-          }}
-        >
-          🏷 {v.category.nameTh ?? v.category.name}
-        </span>
-      )}
-
       {(v.pronunciationThai || v.ipa) && (
         <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
           {v.pronunciationThai && (
