@@ -94,8 +94,16 @@ export default function VerbFormsPage() {
   }, [page]);
 
   useEffect(() => {
-    setLoading(true);
-    void load().finally(() => setLoading(false));
+    let cancelled = false;
+    const init = async () => {
+      setLoading(true);
+      await load();
+      if (!cancelled) setLoading(false);
+    };
+    void init();
+    return () => {
+      cancelled = true;
+    };
   }, [load]);
 
   const totalPages = Math.ceil(total / LIMIT);

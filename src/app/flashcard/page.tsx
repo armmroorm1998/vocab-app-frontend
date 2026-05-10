@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import CustomSelect from "@/components/CustomSelect";
 import api from "@/lib/api";
 import { Vocabulary, EPartOfSpeech, POS_LABELS, POS_COLORS } from "@/types";
