@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { FEATURE_FILL_BLANK_ENABLED } from '@/lib/features';
 
 // List of public routes that don't require authentication
 const PUBLIC_PATHS = ['/login', '/_next', '/favicon.ico', '/api'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (!FEATURE_FILL_BLANK_ENABLED && pathname.startsWith('/fill-blank')) {
+    const homeUrl = request.nextUrl.clone();
+    homeUrl.pathname = '/';
+    return NextResponse.redirect(homeUrl);
+  }
 
   // Allow public paths
   if (PUBLIC_PATHS.some((path) => pathname.startsWith(path))) {

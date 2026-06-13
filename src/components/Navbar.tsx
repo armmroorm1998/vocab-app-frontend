@@ -1,35 +1,43 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
+import { FEATURE_FILL_BLANK_ENABLED } from "@/lib/features";
 
 const links = [
   { href: "/", label: "หน้าแรก" },
   { href: "/vocabulary", label: "คำศัพท์" },
   { href: "/flashcard", label: "Flashcard" },
   { href: "/quiz", label: "Quiz" },
-  { href: "/fill-blank", label: "เติมคำ" },
+  { href: "/conversation-quiz", label: "บทสนทนา" },
   { href: "/verb-forms", label: "กริยา 3 ช่อง" },
 ];
+
+const navLinks = FEATURE_FILL_BLANK_ENABLED
+  ? [...links.slice(0, 5), { href: "/fill-blank", label: "เติมคำ" }, ...links.slice(5)]
+  : links;
 
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [loggedIn, setLoggedIn] = useState(false);
 
-  useEffect(() => {
-    setLoggedIn(!!localStorage.getItem("uid"));
-    // Listen for login/logout in other tabs
-    const onStorage = () => setLoggedIn(!!localStorage.getItem("uid"));
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  const loggedIn = useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof window === "undefined") return () => {};
+      window.addEventListener("storage", onStoreChange);
+      return () => window.removeEventListener("storage", onStoreChange);
+    },
+    () => !!localStorage.getItem("uid"),
+    () => false
+  );
 
   const handleLogout = () => {
-    localStorage.clear();
-    setLoggedIn(false);
+    localStorage.removeItem("uid");
+    localStorage.removeItem("recoverKey");
+    document.cookie = "uid=; path=/; max-age=0; SameSite=Lax";
+    document.cookie = "recoverKey=; path=/; max-age=0; SameSite=Lax";
     setMenuOpen(false);
     router.replace("/login");
   };
@@ -59,7 +67,7 @@ export default function Navbar() {
         {/* Desktop Links */}
         {loggedIn && (
           <div className="hidden sm:flex gap-1 ml-auto">
-            {links.map((l) => {
+            {navLinks.map((l) => {
               const active = pathname === l.href;
               return (
                 <Link
@@ -134,7 +142,7 @@ export default function Navbar() {
             borderColor: "var(--card-border)",
           }}
         >
-          {links.map((l) => {
+          {navLinks.map((l) => {
             const active = pathname === l.href;
             return (
               <Link

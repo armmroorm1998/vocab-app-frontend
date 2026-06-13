@@ -58,6 +58,30 @@ export interface VocabListResponse extends ApiResponse<Vocabulary[]> {
   limit: number;
 }
 
+export interface ConversationQuizCategory {
+  key: string;
+  name: string;
+  emoji: string | null;
+  totalQuestions: number;
+}
+
+export interface ConversationQuizQuestion {
+  id: number;
+  categoryKey: string;
+  categoryName: string;
+  categoryEmoji: string | null;
+  speaker: string;
+  prompt: string;
+  choices: string[];
+  correctAnswer: string;
+  naturalAnswer: string;
+  orderIndex: number;
+}
+
+export type ConversationQuizResponse = ApiResponse<ConversationQuizQuestion[]>;
+export type ConversationQuizCategoryResponse =
+  ApiResponse<ConversationQuizCategory[]>;
+
 export const POS_LABELS: Record<EPartOfSpeech, string> = {
   [EPartOfSpeech.NOUN]: 'Noun',
   [EPartOfSpeech.VERB]: 'Verb',

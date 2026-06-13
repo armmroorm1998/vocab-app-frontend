@@ -4,6 +4,15 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 
+const AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
+
+function setAuthCookies(uid: string, recoverKey: string) {
+  const secureAttr = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
+  const commonAttrs = `; path=/; max-age=${AUTH_COOKIE_MAX_AGE_SECONDS}; SameSite=Lax${secureAttr}`;
+  document.cookie = `uid=${encodeURIComponent(uid)}${commonAttrs}`;
+  document.cookie = `recoverKey=${encodeURIComponent(recoverKey)}${commonAttrs}`;
+}
+
 export default function LoginPage() {
   const [mode, setMode] = useState<'register' | 'recover'>('register');
   const [username, setUsername] = useState("");
@@ -19,11 +28,13 @@ export default function LoginPage() {
     const storedUid = localStorage.getItem("uid");
     const storedPainttext = localStorage.getItem("recoverKey");
     if (storedUid && storedPainttext) {
+      setAuthCookies(storedUid, storedPainttext);
       router.replace("/");
     }
     // Do not call setError here to avoid setState in effect
     // Prevent access to login page if already logged in
     if (typeof window !== "undefined" && window.location.pathname === "/login" && storedUid && storedPainttext) {
+      setAuthCookies(storedUid, storedPainttext);
       router.replace("/");
     }
   }, [router]);
@@ -53,14 +64,12 @@ export default function LoginPage() {
         setPainttext(data.recovery_key);
         localStorage.setItem("uid", data.user.uid);
         localStorage.setItem("recoverKey", data.recovery_key);
-        // Set cookies for middleware auth
-        document.cookie = `uid=${data.user.uid}; path=/`;
-        document.cookie = `recoverKey=${data.recovery_key}; path=/`;
+        setAuthCookies(data.user.uid, data.recovery_key);
         // รอให้ user copy painttext แล้วค่อย redirect
       } else {
         setError("ไม่สามารถสร้างบัญชีได้");
       }
-    } catch (err) {
+    } catch {
       setError("เกิดข้อผิดพลาด");
     } finally {
       setLoading(false);
@@ -82,16 +91,14 @@ export default function LoginPage() {
       if (data && data.success && data.user.uid) {
         localStorage.setItem("uid", data.user.uid);
         localStorage.setItem("recoverKey", recoverKey);
-        // Set cookies for middleware auth
-        document.cookie = `uid=${data.user.uid}; path=/`;
-        document.cookie = `recoverKey=${recoverKey}; path=/`;
+        setAuthCookies(data.user.uid, recoverKey);
         setRecoverSuccess(true);
         window.location.href = "/";
         setTimeout(() => window.location.reload(), 100);
       } else {
         setError(data?.message || "ไม่สามารถกู้บัญชีได้");
       }
-    } catch (err) {
+    } catch {
       setError("เกิดข้อผิดพลาด");
     } finally {
       setLoading(false);
