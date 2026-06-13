@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FEATURE_FILL_BLANK_ENABLED } from "@/lib/features";
 
 const features = [
   {
@@ -23,11 +24,11 @@ const features = [
     color: "#a78bfa",
   },
   {
-    href: "/fill-blank",
-    icon: "📝",
-    title: "เติมคำ",
-    desc: "ฝึกเติมคำในช่องว่างจากประโยคตัวอย่างจริง เลือกคำตอบที่ถูกต้องจาก 4 ตัวเลือก",
-    color: "#f59e0b",
+    href: "/conversation-quiz",
+    icon: "💬",
+    title: "Conversation Quiz",
+    desc: "ฝึกบทสนทนาอังกฤษแบบเป็นประโยค ผ่านโจทย์เติมคำตามบริบทจริง",
+    color: "#ec4899",
   },
   {
     href: "/verb-forms",
@@ -37,6 +38,20 @@ const features = [
     color: "#10b981",
   },
 ];
+
+const featureCards = FEATURE_FILL_BLANK_ENABLED
+  ? [
+      ...features.slice(0, 4),
+      {
+        href: "/fill-blank",
+        icon: "📝",
+        title: "เติมคำ",
+        desc: "ฝึกเติมคำในช่องว่างจากประโยคตัวอย่างจริง เลือกคำตอบที่ถูกต้องจาก 4 ตัวเลือก",
+        color: "#f59e0b",
+      },
+      ...features.slice(4),
+    ]
+  : features;
 
 export default function HomePage() {
   return (
@@ -96,7 +111,7 @@ export default function HomePage() {
           gap: "1.5rem",
         }}
       >
-        {features.map((f) => (
+        {featureCards.map((f) => (
           <Link key={f.href} href={f.href} style={{ textDecoration: "none" }}>
             <div
               style={{
