@@ -75,6 +75,7 @@ export interface ConversationQuizQuestion {
   choices: string[];
   correctAnswer: string;
   naturalAnswer: string;
+  choiceScores: Record<string, number> | null;
   orderIndex: number;
 }
 
