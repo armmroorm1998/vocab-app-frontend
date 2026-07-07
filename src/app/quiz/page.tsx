@@ -1,9 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CustomSelect from "@/components/CustomSelect";
 import api from "@/lib/api";
-import { Vocabulary, EPartOfSpeech, POS_LABELS } from "@/types";
-import { ApiResponse } from "@/types";
+import { Vocabulary, EPartOfSpeech, POS_LABELS, QuizAttemptStats, ApiResponse } from "@/types";
 
 const ALL_POS = Object.values(EPartOfSpeech);
 
@@ -133,17 +132,30 @@ function SetupScreen({
 function QuizScreen({
   questions,
   onFinish,
+  onSubmitAnswer,
 }: {
   questions: Question[];
   onFinish: () => void;
+  onSubmitAnswer: (vocabId: number, selectedAnswer: string) => void;
 }) {
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [scores, setScores] = useState<boolean[]>([]);
+  const [quizStats, setQuizStats] = useState<QuizAttemptStats | null>(null);
 
   const current = questions[index];
   const progress = ((index + 1) / questions.length) * 100;
   const answered = selected !== null;
+
+  // Fetch updated stats when quiz finishes
+  useEffect(() => {
+    if (!current && scores.length === questions.length) {
+      api.get<ApiResponse<QuizAttemptStats>>("/vocabularies/quiz-stats")
+        .then((res) => setQuizStats(res.data.body))
+        .catch(() => {});
+      window.dispatchEvent(new CustomEvent("vocab:streak-refresh"));
+    }
+  }, [current, scores.length, questions.length]);
 
   const handleSelect = (option: string) => {
     if (answered) return;
@@ -151,7 +163,10 @@ function QuizScreen({
   };
 
   const handleNext = () => {
-    setScores((s) => [...s, selected === current.correctAnswer]);
+    const isCorrect = selected === current.correctAnswer;
+    setScores((s) => [...s, isCorrect]);
+    // Record attempt on backend (fire-and-forget)
+    onSubmitAnswer(current.vocab.id, selected ?? "");
     setSelected(null);
     setIndex((i) => i + 1);
   };
@@ -224,6 +239,38 @@ function QuizScreen({
               </div>
             ))}
           </div>
+
+          {/* All-time stats */}
+          {quizStats && (
+            <div
+              style={{
+                marginTop: "1.5rem",
+                padding: "1rem",
+                background: "rgba(99,102,241,0.08)",
+                border: "1px solid rgba(99,102,241,0.2)",
+                borderRadius: 12,
+                textAlign: "left",
+              }}
+            >
+              <div style={{ fontWeight: 700, color: "#e2e8f0", marginBottom: "0.5rem", fontSize: "0.9rem" }}>
+                📊 สถิติรวมทั้งหมด
+              </div>
+              <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ color: "#94a3b8", fontSize: "0.75rem" }}>ทำทั้งหมด</div>
+                  <div style={{ fontWeight: 700, color: "#e2e8f0" }}>{quizStats.totalAttempts} ข้อ</div>
+                </div>
+                <div>
+                  <div style={{ color: "#94a3b8", fontSize: "0.75rem" }}>ตอบถูกรวม</div>
+                  <div style={{ fontWeight: 700, color: "#86efac" }}>{quizStats.correctCount}</div>
+                </div>
+                <div>
+                  <div style={{ color: "#94a3b8", fontSize: "0.75rem" }}>Accuracy รวม</div>
+                  <div style={{ fontWeight: 700, color: "#facc15" }}>{Math.round(quizStats.accuracy * 100)}%</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <button
@@ -401,10 +448,15 @@ export default function QuizPage() {
     return <SetupScreen onStart={handleStart} />;
   }
 
+  const handleSubmitAnswer = (vocabId: number, selectedAnswer: string) => {
+    api.post(`/vocabularies/${vocabId}/quiz-answer`, { selectedAnswer }).catch(() => {});
+  };
+
   return (
     <QuizScreen
       questions={questions}
       onFinish={() => setQuestions(null)}
+      onSubmitAnswer={handleSubmitAnswer}
     />
   );
 }

@@ -1,11 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useSyncExternalStore } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import { FEATURE_FILL_BLANK_ENABLED } from "@/lib/features";
+import api from "@/lib/api";
+import { ApiResponse, StreakInfo } from "@/types";
 
 const links = [
   { href: "/", label: "หน้าแรก" },
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/vocabulary", label: "คำศัพท์" },
   { href: "/flashcard", label: "Flashcard" },
   { href: "/quiz", label: "Quiz" },
@@ -22,6 +25,8 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [streak, setStreak] = useState<number>(0);
+  const [goalMet, setGoalMet] = useState(false);
 
   const loggedIn = useSyncExternalStore(
     (onStoreChange) => {
@@ -32,6 +37,21 @@ export default function Navbar() {
     () => !!localStorage.getItem("uid"),
     () => false
   );
+
+  useEffect(() => {
+    if (!loggedIn) return;
+    const fetchStreak = () => {
+      api.get<ApiResponse<StreakInfo>>("/user/streak")
+        .then((res) => {
+          setStreak(res.data.body.currentStreak);
+          setGoalMet(res.data.body.goalMet);
+        })
+        .catch(() => {});
+    };
+    fetchStreak();
+    window.addEventListener("vocab:streak-refresh", fetchStreak);
+    return () => window.removeEventListener("vocab:streak-refresh", fetchStreak);
+  }, [loggedIn]);
 
   const handleLogout = () => {
     localStorage.removeItem("uid");
@@ -97,6 +117,27 @@ export default function Navbar() {
             >
               ออกจากระบบ
             </button>
+            {streak > 0 && (
+              <span
+                title={`Streak ${streak} วัน${goalMet ? " (เป้าหมายวันนี้ครบแล้ว! 🎉)" : ""}`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.2rem",
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  color: goalMet ? "#facc15" : "#fb923c",
+                  padding: "0.3rem 0.6rem",
+                  borderRadius: 8,
+                  background: goalMet ? "rgba(250,204,21,0.12)" : "rgba(251,146,60,0.12)",
+                  border: `1px solid ${goalMet ? "rgba(250,204,21,0.3)" : "rgba(251,146,60,0.3)"}`,
+                  cursor: "default",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                🔥 {streak}
+              </span>
+            )}
           </div>
         )}
 
@@ -173,6 +214,22 @@ export default function Navbar() {
           >
             ออกจากระบบ
           </button>
+          {streak > 0 && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.3rem",
+                padding: "0.5rem 0.75rem",
+                fontSize: "0.85rem",
+                fontWeight: 700,
+                color: goalMet ? "#facc15" : "#fb923c",
+                marginTop: "0.25rem",
+              }}
+            >
+              🔥 Streak {streak} วัน{goalMet ? " · เป้าหมายวันนี้ครบ!" : ""}
+            </div>
+          )}
         </div>
       )}
     </nav>

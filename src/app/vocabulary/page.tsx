@@ -67,10 +67,14 @@ function VocabCard({
   v,
   onSpeak,
   isSpeaking,
+  isBookmarked,
+  onToggleBookmark,
 }: {
   v: Vocabulary;
   onSpeak: (word: string) => void;
   isSpeaking: boolean;
+  isBookmarked: boolean;
+  onToggleBookmark: (id: number) => void;
 }) {
   return (
     <div
@@ -125,6 +129,27 @@ function VocabCard({
           }}
         >
           <SpeakerIcon active={isSpeaking} />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleBookmark(v.id); }}
+          title={isBookmarked ? "ยกเลิก bookmark" : "เพิ่ม bookmark"}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 30,
+            height: 30,
+            borderRadius: 8,
+            border: "1px solid var(--card-border)",
+            background: isBookmarked ? "rgba(250,204,21,0.15)" : "transparent",
+            color: isBookmarked ? "#facc15" : "#94a3b8",
+            cursor: "pointer",
+            transition: "all 0.15s",
+            flexShrink: 0,
+            fontSize: "1rem",
+          }}
+        >
+          {isBookmarked ? "★" : "☆"}
         </button>
       </div>
 
@@ -182,6 +207,7 @@ export default function VocabularyPage() {
   const [searchInput, setSearchInput] = useState("");
   const [cefrLevel, setCefrLevel] = useState<ECefrLevel | "">("");
   const [loading, setLoading] = useState(false);
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
   const LIMIT = 20;
 
   const load = useCallback(async () => {
@@ -214,8 +240,47 @@ export default function VocabularyPage() {
     }
   }, []);
 
+  // Load bookmarked IDs once on mount
+  const loadBookmarks = useCallback(async () => {
+    try {
+      const res = await api.get<VocabListResponse>("/vocabularies/bookmarks", {
+        params: { limit: 100 },
+      });
+      const ids = new Set(res.data.body.map((v) => v.id));
+      setBookmarkedIds(ids);
+    } catch {
+      // user might not be logged in — ignore silently
+    }
+  }, []);
+
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { loadCategories(); }, [loadCategories]);
+  useEffect(() => { loadCategories(); loadBookmarks(); }, [loadCategories, loadBookmarks]);
+
+  const handleToggleBookmark = useCallback(async (id: number) => {
+    const alreadyBookmarked = bookmarkedIds.has(id);
+    // Optimistic update
+    setBookmarkedIds((prev) => {
+      const next = new Set(prev);
+      if (alreadyBookmarked) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    try {
+      if (alreadyBookmarked) {
+        await api.delete(`/vocabularies/${id}/bookmark`);
+      } else {
+        await api.post(`/vocabularies/${id}/bookmark`);
+      }
+    } catch {
+      // Revert on failure
+      setBookmarkedIds((prev) => {
+        const next = new Set(prev);
+        if (alreadyBookmarked) next.add(id);
+        else next.delete(id);
+        return next;
+      });
+    }
+  }, [bookmarkedIds]);
 
   // Debounce search input
   useEffect(() => {
@@ -306,6 +371,8 @@ export default function VocabularyPage() {
               key={v.id}
               v={v}
               isSpeaking={speaking && speakingId === v.id}
+              isBookmarked={bookmarkedIds.has(v.id)}
+              onToggleBookmark={handleToggleBookmark}
               onSpeak={(word) => {
                 if (speaking && speakingId === v.id) {
                   cancel();

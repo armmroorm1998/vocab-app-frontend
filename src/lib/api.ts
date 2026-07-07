@@ -6,4 +6,12 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+api.interceptors.request.use((config) => {
+  const uid = typeof window !== 'undefined' ? localStorage.getItem('uid') : null;
+  if (uid) {
+    config.headers['x-uid'] = uid;
+  }
+  return config;
+});
+
 export default api;

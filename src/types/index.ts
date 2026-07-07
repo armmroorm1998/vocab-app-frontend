@@ -83,6 +83,62 @@ export type ConversationQuizResponse = ApiResponse<ConversationQuizQuestion[]>;
 export type ConversationQuizCategoryResponse =
   ApiResponse<ConversationQuizCategory[]>;
 
+export interface SubmitAnswerResult {
+  isCorrect: boolean;
+  score: number;
+  correctAnswer: string;
+  naturalAnswer: string;
+}
+
+export interface QuizCategoryStats {
+  categoryKey: string;
+  categoryName: string;
+  attempts: number;
+  correct: number;
+  accuracy: number;
+}
+
+export interface QuizStats {
+  totalAttempts: number;
+  correctCount: number;
+  accuracy: number;
+  byCategory: QuizCategoryStats[];
+}
+
+export interface VocabularyProgress {
+  id: number;
+  timesSeen: number;
+  timesCorrect: number;
+  timesWrong: number;
+  easeFactor: number;
+  intervalDays: number;
+  repetitions: number;
+  nextReviewDate: string | null;
+  lastReviewedDate: string | null;
+}
+
+export interface StreakInfo {
+  currentStreak: number;
+  longestStreak: number;
+  todayCount: number;
+  dailyGoal: number;
+  goalMet: boolean;
+}
+
+export interface QuizAttemptStats {
+  totalAttempts: number;
+  correctCount: number;
+  accuracy: number;
+}
+
+export interface WeakWord {
+  vocabularyId: number;
+  word: string;
+  meaning: string;
+  total: number;
+  wrongCount: number;
+}
+
 export const POS_LABELS: Record<EPartOfSpeech, string> = {
   [EPartOfSpeech.NOUN]: 'Noun',
   [EPartOfSpeech.VERB]: 'Verb',

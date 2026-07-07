@@ -4,6 +4,7 @@ import api from "@/lib/api";
 import { ApiResponse } from "@/types";
 
 interface FillBlankQuestion {
+  vocabularyId: number;
   sentence: string;
   answer: string;
   meaning: string;
@@ -52,9 +53,14 @@ export default function FillBlankPage() {
   const handleSelect = (choice: string) => {
     if (selected !== null) return; // already answered
     setSelected(choice);
-    if (choice === questions[current].answer) {
+    const isCorrect = choice === questions[current].answer;
+    if (isCorrect) {
       setScore((s) => s + 1);
     }
+    // Record spaced repetition review
+    api.post(`/vocabularies/${questions[current].vocabularyId}/review`, { correct: isCorrect })
+      .then(() => window.dispatchEvent(new CustomEvent("vocab:streak-refresh")))
+      .catch(() => {});
   };
 
   const handleNext = () => {

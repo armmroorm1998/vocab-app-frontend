@@ -8,6 +8,8 @@ import {
   ConversationQuizCategoryResponse,
   ConversationQuizQuestion,
   ConversationQuizResponse,
+  QuizStats,
+  ApiResponse,
 } from "@/types";
 
 interface ChatMessage {
@@ -58,6 +60,7 @@ export default function ConversationQuizPage() {
   const [scores, setScores] = useState<number[]>([]);
   const [finished, setFinished] = useState(false);
   const [waitingForNext, setWaitingForNext] = useState(false);
+  const [quizStats, setQuizStats] = useState<QuizStats | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -124,6 +127,7 @@ export default function ConversationQuizPage() {
     setScores([]);
     setFinished(false);
     setWaitingForNext(false);
+    setQuizStats(null);
   };
 
   const startConversation = async () => {
@@ -163,11 +167,20 @@ export default function ConversationQuizPage() {
     setSelectedAnswers((prev) => [...prev, choice]);
     setScores((prev) => [...prev, score]);
     setWaitingForNext(true);
+
+    // Record attempt on backend (fire-and-forget — no auth required for score local calc)
+    api.post(`/conversation-quiz/questions/${current.id}/submit`, {
+      selectedChoice: choice,
+    }).catch(() => {});
   };
 
   const handleNext = () => {
     if (index + 1 >= questions.length) {
       setFinished(true);
+      // Fetch updated stats after quiz completes
+      api.get<ApiResponse<QuizStats>>("/conversation-quiz/stats")
+        .then((res) => setQuizStats(res.data.body))
+        .catch(() => {});
       return;
     }
     setIndex((prev) => prev + 1);
@@ -370,6 +383,48 @@ export default function ConversationQuizPage() {
             เปลี่ยนหมวด
           </button>
         </div>
+
+        {/* Overall stats across all categories */}
+        {quizStats && (
+          <div
+            style={{
+              background: "var(--card)",
+              border: "1px solid var(--card-border)",
+              borderRadius: 16,
+              padding: "1.2rem",
+              marginTop: "1.2rem",
+              textAlign: "left",
+            }}
+          >
+            <div style={{ fontWeight: 700, color: "#e2e8f0", marginBottom: "0.75rem", fontSize: "0.95rem" }}>
+              📊 สถิติรวมของคุณ
+            </div>
+            <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+              <div>
+                <div style={{ color: "#94a3b8", fontSize: "0.75rem" }}>ทั้งหมด</div>
+                <div style={{ fontWeight: 700, color: "#e2e8f0" }}>{quizStats.totalAttempts} ครั้ง</div>
+              </div>
+              <div>
+                <div style={{ color: "#94a3b8", fontSize: "0.75rem" }}>ตอบถูก</div>
+                <div style={{ fontWeight: 700, color: "#86efac" }}>{quizStats.correctCount}</div>
+              </div>
+              <div>
+                <div style={{ color: "#94a3b8", fontSize: "0.75rem" }}>Accuracy</div>
+                <div style={{ fontWeight: 700, color: "#facc15" }}>{Math.round(quizStats.accuracy * 100)}%</div>
+              </div>
+            </div>
+            {quizStats.byCategory.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                {quizStats.byCategory.map((cat) => (
+                  <div key={cat.categoryKey} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "#94a3b8" }}>
+                    <span>{cat.categoryName}</span>
+                    <span>{cat.correct}/{cat.attempts} ({Math.round(cat.accuracy * 100)}%)</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }

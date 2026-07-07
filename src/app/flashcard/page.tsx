@@ -33,13 +33,15 @@ export default function FlashcardPage() {
   const [count, setCount] = useState(20);
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
+  const [reviewMode, setReviewMode] = useState(false);
 
   const loadCards = async () => {
     setLoading(true);
     try {
+      const endpoint = reviewMode ? "/vocabularies/review" : "/vocabularies/random";
       const params: Record<string, string | number> = { limit: count };
-      if (pos) params.partOfSpeech = pos;
-      const res = await api.get<ApiResponse<Vocabulary[]>>("/vocabularies/random", { params });
+      if (!reviewMode && pos) params.partOfSpeech = pos;
+      const res = await api.get<ApiResponse<Vocabulary[]>>(endpoint, { params });
       setCards(res.data.body);
       setIndex(0);
       setFlipped(false);
@@ -81,19 +83,69 @@ export default function FlashcardPage() {
             marginBottom: "1.5rem",
           }}
         >
+          {/* Mode selector */}
           <div style={{ marginBottom: "1rem" }}>
-            <label style={{ display: "block", color: "#94a3b8", fontSize: "0.85rem", marginBottom: "0.4rem" }}>
-              Part of Speech
+            <label style={{ display: "block", color: "#94a3b8", fontSize: "0.85rem", marginBottom: "0.5rem" }}>
+              โหมด
             </label>
-            <CustomSelect
-              value={pos}
-              onChange={(v) => setPos(v as EPartOfSpeech | "")}
-              options={[
-                { value: "", label: "ทั้งหมด" },
-                ...ALL_POS.map((p) => ({ value: p, label: POS_LABELS[p] })),
-              ]}
-            />
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button
+                onClick={() => setReviewMode(false)}
+                style={{
+                  flex: 1,
+                  padding: "0.45rem 0.75rem",
+                  borderRadius: 8,
+                  border: "1px solid",
+                  borderColor: !reviewMode ? "var(--accent)" : "var(--card-border)",
+                  background: !reviewMode ? "var(--accent)" : "transparent",
+                  color: !reviewMode ? "#fff" : "#94a3b8",
+                  fontWeight: !reviewMode ? 700 : 400,
+                  cursor: "pointer",
+                  fontSize: "0.85rem",
+                }}
+              >
+                🎲 สุ่มทั่วไป
+              </button>
+              <button
+                onClick={() => setReviewMode(true)}
+                style={{
+                  flex: 1,
+                  padding: "0.45rem 0.75rem",
+                  borderRadius: 8,
+                  border: "1px solid",
+                  borderColor: reviewMode ? "var(--accent)" : "var(--card-border)",
+                  background: reviewMode ? "var(--accent)" : "transparent",
+                  color: reviewMode ? "#fff" : "#94a3b8",
+                  fontWeight: reviewMode ? 700 : 400,
+                  cursor: "pointer",
+                  fontSize: "0.85rem",
+                }}
+              >
+                🔁 ทบทวน (SRS)
+              </button>
+            </div>
+            {reviewMode && (
+              <p style={{ color: "#64748b", fontSize: "0.78rem", marginTop: "0.4rem", textAlign: "left" }}>
+                เรียงลำดับคำที่ถึงเวลาทบทวนตาม Spaced Repetition
+              </p>
+            )}
           </div>
+
+          {!reviewMode && (
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", color: "#94a3b8", fontSize: "0.85rem", marginBottom: "0.4rem" }}>
+                Part of Speech
+              </label>
+              <CustomSelect
+                value={pos}
+                onChange={(v) => setPos(v as EPartOfSpeech | "")}
+                options={[
+                  { value: "", label: "ทั้งหมด" },
+                  ...ALL_POS.map((p) => ({ value: p, label: POS_LABELS[p] })),
+                ]}
+              />
+            </div>
+          )}
           <div>
             <label style={{ display: "block", color: "#94a3b8", fontSize: "0.85rem", marginBottom: "0.4rem" }}>
               จำนวนการ์ด
@@ -329,39 +381,90 @@ export default function FlashcardPage() {
       </div>
 
       {/* Navigation */}
-      <div style={{ display: "flex", gap: "0.75rem" }}>
-        <button
-          disabled={index === 0}
-          onClick={() => { setIndex((i) => i - 1); setFlipped(false); }}
-          style={{
-            flex: 1,
-            padding: "0.65rem",
-            background: index === 0 ? "#1e293b" : "#334155",
-            color: index === 0 ? "#475569" : "#e2e8f0",
-            border: "none",
-            borderRadius: 10,
-            cursor: index === 0 ? "default" : "pointer",
-            fontWeight: 600,
-          }}
-        >
-          ← ก่อนหน้า
-        </button>
-        <button
-          onClick={() => { setIndex((i) => i + 1); setFlipped(false); }}
-          style={{
-            flex: 1,
-            padding: "0.65rem",
-            background: "var(--accent)",
-            color: "#fff",
-            border: "none",
-            borderRadius: 10,
-            cursor: "pointer",
-            fontWeight: 600,
-          }}
-        >
-          {index + 1 >= cards.length ? "จบแล้ว 🎉" : "ถัดไป →"}
-        </button>
-      </div>
+      {flipped ? (
+        /* When card is flipped: show review buttons */
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          <button
+            onClick={() => {
+              api.post(`/vocabularies/${current.id}/review`, { correct: false })
+                .then(() => window.dispatchEvent(new CustomEvent("vocab:streak-refresh")))
+                .catch(() => {});
+              setIndex((i) => i + 1);
+              setFlipped(false);
+            }}
+            style={{
+              flex: 1,
+              padding: "0.65rem",
+              background: "rgba(239,68,68,0.15)",
+              color: "#fca5a5",
+              border: "1px solid rgba(239,68,68,0.3)",
+              borderRadius: 10,
+              cursor: "pointer",
+              fontWeight: 700,
+              fontSize: "0.95rem",
+            }}
+          >
+            ✗ ยังไม่รู้
+          </button>
+          <button
+            onClick={() => {
+              api.post(`/vocabularies/${current.id}/review`, { correct: true })
+                .then(() => window.dispatchEvent(new CustomEvent("vocab:streak-refresh")))
+                .catch(() => {});
+              setIndex((i) => i + 1);
+              setFlipped(false);
+            }}
+            style={{
+              flex: 1,
+              padding: "0.65rem",
+              background: "rgba(134,239,172,0.15)",
+              color: "#86efac",
+              border: "1px solid rgba(134,239,172,0.3)",
+              borderRadius: 10,
+              cursor: "pointer",
+              fontWeight: 700,
+              fontSize: "0.95rem",
+            }}
+          >
+            ✓ รู้แล้ว
+          </button>
+        </div>
+      ) : (
+        /* When card is not flipped: show normal prev/next */
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          <button
+            disabled={index === 0}
+            onClick={() => { setIndex((i) => i - 1); setFlipped(false); }}
+            style={{
+              flex: 1,
+              padding: "0.65rem",
+              background: index === 0 ? "#1e293b" : "#334155",
+              color: index === 0 ? "#475569" : "#e2e8f0",
+              border: "none",
+              borderRadius: 10,
+              cursor: index === 0 ? "default" : "pointer",
+              fontWeight: 600,
+            }}
+          >
+            ← ก่อนหน้า
+          </button>
+          <button
+            onClick={() => { setIndex((i) => i + 1); setFlipped(false); }}
+            style={{
+              flex: 1,
+              padding: "0.65rem",
+              background: "var(--accent)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 10,
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            {index + 1 >= cards.length ? "จบแล้ว 🎉" : "ข้าม →"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
