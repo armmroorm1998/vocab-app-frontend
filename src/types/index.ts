@@ -139,6 +139,20 @@ export interface WeakWord {
   wrongCount: number;
 }
 
+export interface FlashcardProgressStats {
+  totalReviewed: number;
+  totalMastered: number;
+  accuracy: number;
+  dueToday: number;
+}
+
+export interface DictationItem {
+  vocabularyId: number;
+  sentence: string;
+  word: string;
+  meaning: string;
+}
+
 export const POS_LABELS: Record<EPartOfSpeech, string> = {
   [EPartOfSpeech.NOUN]: 'Noun',
   [EPartOfSpeech.VERB]: 'Verb',

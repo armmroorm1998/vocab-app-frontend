@@ -2,9 +2,7 @@
 import { useState, useEffect } from "react";
 import CustomSelect from "@/components/CustomSelect";
 import api from "@/lib/api";
-import { Vocabulary, EPartOfSpeech, POS_LABELS, QuizAttemptStats, ApiResponse } from "@/types";
-
-const ALL_POS = Object.values(EPartOfSpeech);
+import { Vocabulary, QuizAttemptStats, ApiResponse, Category } from "@/types";
 
 interface Question {
   vocab: Vocabulary;
@@ -28,15 +26,22 @@ function buildQuestions(vocabs: Vocabulary[]): Question[] {
 function SetupScreen({
   onStart,
 }: {
-  onStart: (pos: EPartOfSpeech | "", count: number) => void;
+  onStart: (categoryId: number | "", count: number) => void;
 }) {
-  const [pos, setPos] = useState<EPartOfSpeech | "">("");
+  const [categoryId, setCategoryId] = useState<number | "">("");
+  const [categories, setCategories] = useState<Category[]>([]);
   const [count, setCount] = useState(10);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    api.get<ApiResponse<Category[]>>("/categories")
+      .then((res) => setCategories(res.data.body))
+      .catch(() => {});
+  }, []);
+
   const handleStart = async () => {
     setLoading(true);
-    await onStart(pos, count);
+    await onStart(categoryId, count);
     setLoading(false);
   };
 
@@ -76,14 +81,14 @@ function SetupScreen({
               textAlign: "left",
             }}
           >
-            Part of Speech
+            หมวดหมู่
           </label>
           <CustomSelect
-            value={pos}
-            onChange={(v) => setPos(v as EPartOfSpeech | "")}
+            value={String(categoryId)}
+            onChange={(v) => setCategoryId(v === "" ? "" : Number(v))}
             options={[
-              { value: "", label: "ทั้งหมด" },
-              ...ALL_POS.map((p) => ({ value: p, label: POS_LABELS[p] })),
+              { value: "", label: "ทุกหมวดหมู่" },
+              ...categories.map((c) => ({ value: String(c.id), label: c.nameTh ?? c.name })),
             ]}
           />
         </div>
@@ -420,10 +425,10 @@ function QuizScreen({
 export default function QuizPage() {
   const [questions, setQuestions] = useState<Question[] | null>(null);
 
-  const handleStart = async (pos: EPartOfSpeech | "", count: number) => {
+  const handleStart = async (categoryId: number | "", count: number) => {
     try {
       const params: Record<string, string | number> = { limit: Math.max(count, 4) };
-      if (pos) params.partOfSpeech = pos;
+      if (categoryId) params.categoryId = categoryId;
       const res = await api.get<ApiResponse<Vocabulary[]>>("/vocabularies/random", { params });
       const vocabs = res.data.body;
       // Deduplicate by word to avoid repeated questions for the same vocabulary

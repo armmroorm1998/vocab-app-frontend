@@ -1,9 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CustomSelect from "@/components/CustomSelect";
 import api from "@/lib/api";
-import { Vocabulary, EPartOfSpeech, POS_LABELS, POS_COLORS } from "@/types";
-import { ApiResponse } from "@/types";
+import { Vocabulary, EPartOfSpeech, POS_LABELS, POS_COLORS, Category, ApiResponse } from "@/types";
 
 const ALL_POS = Object.values(EPartOfSpeech);
 
@@ -29,18 +28,25 @@ export default function FlashcardPage() {
   const [cards, setCards] = useState<Vocabulary[]>([]);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  const [pos, setPos] = useState<EPartOfSpeech | "">("");
+  const [categoryId, setCategoryId] = useState<number | "">("");
+  const [categories, setCategories] = useState<Category[]>([]);
   const [count, setCount] = useState(20);
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const [reviewMode, setReviewMode] = useState(false);
+
+  useEffect(() => {
+    api.get<ApiResponse<Category[]>>("/categories")
+      .then((res) => setCategories(res.data.body))
+      .catch(() => {});
+  }, []);
 
   const loadCards = async () => {
     setLoading(true);
     try {
       const endpoint = reviewMode ? "/vocabularies/review" : "/vocabularies/random";
       const params: Record<string, string | number> = { limit: count };
-      if (!reviewMode && pos) params.partOfSpeech = pos;
+      if (!reviewMode && categoryId) params.categoryId = categoryId;
       const res = await api.get<ApiResponse<Vocabulary[]>>(endpoint, { params });
       setCards(res.data.body);
       setIndex(0);
@@ -134,14 +140,14 @@ export default function FlashcardPage() {
           {!reviewMode && (
             <div style={{ marginBottom: "1rem" }}>
               <label style={{ display: "block", color: "#94a3b8", fontSize: "0.85rem", marginBottom: "0.4rem" }}>
-                Part of Speech
+                หมวดหมู่
               </label>
               <CustomSelect
-                value={pos}
-                onChange={(v) => setPos(v as EPartOfSpeech | "")}
+                value={String(categoryId)}
+                onChange={(v) => setCategoryId(v === "" ? "" : Number(v))}
                 options={[
-                  { value: "", label: "ทั้งหมด" },
-                  ...ALL_POS.map((p) => ({ value: p, label: POS_LABELS[p] })),
+                  { value: "", label: "ทุกหมวดหมู่" },
+                  ...categories.map((c) => ({ value: String(c.id), label: c.nameTh ?? c.name })),
                 ]}
               />
             </div>

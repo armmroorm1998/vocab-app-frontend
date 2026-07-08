@@ -3,6 +3,13 @@ import { FEATURE_FILL_BLANK_ENABLED } from "@/lib/features";
 
 const features = [
   {
+    href: "/dashboard",
+    icon: "📊",
+    title: "Dashboard",
+    desc: "ดูสถิติรวม streak, quiz accuracy, flashcard progress และ badges ทั้งหมดของคุณ",
+    color: "#a78bfa",
+  },
+  {
     href: "/vocabulary",
     icon: "📖",
     title: "คำศัพท์",
@@ -36,6 +43,20 @@ const features = [
     title: "Verb 3 ช่อง",
     desc: "สุ่มคำกริยาจากคลัง ดู V1 / V2 / V3",
     color: "#10b981",
+  },
+  {
+    href: "/dictation",
+    icon: "🎧",
+    title: "Dictation",
+    desc: "ฟังประโยคภาษาอังกฤษแล้วพิมพ์สิ่งที่ได้ยิน ฝึกทักษะ Listening โดยตรง",
+    color: "#6366f1",
+  },
+  {
+    href: "/sentence-drill",
+    icon: "📖",
+    title: "Sentence Drill",
+    desc: "อ่านประโยคตัวอย่าง เลือกความหมายของคำที่ highlight — เรียนจาก context จริง",
+    color: "#ec4899",
   },
 ];
 

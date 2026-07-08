@@ -8,7 +8,7 @@ import {
   QuizAttemptStats,
   QuizStats,
   WeakWord,
-  Vocabulary,
+  FlashcardProgressStats,
 } from "@/types";
 
 // ─── Badge definitions ──────────────────────────────────────────────────────
@@ -170,7 +170,7 @@ export default function DashboardPage() {
   const [streak, setStreak] = useState<StreakInfo | null>(null);
   const [quizStats, setQuizStats] = useState<QuizAttemptStats | null>(null);
   const [convStats, setConvStats] = useState<QuizStats | null>(null);
-  const [reviewDue, setReviewDue] = useState<number | null>(null);
+  const [flashcardStats, setFlashcardStats] = useState<FlashcardProgressStats | null>(null);
   const [weakWords, setWeakWords] = useState<WeakWord[]>([]);
   const [displayName, setDisplayName] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -178,14 +178,12 @@ export default function DashboardPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [streakRes, quizRes, convRes, reviewRes, weakRes, meRes] =
+        const [streakRes, quizRes, convRes, flashcardRes, weakRes, meRes] =
           await Promise.allSettled([
             api.get<ApiResponse<StreakInfo>>("/user/streak"),
             api.get<ApiResponse<QuizAttemptStats>>("/vocabularies/quiz-stats"),
             api.get<ApiResponse<QuizStats>>("/conversation-quiz/stats"),
-            api.get<ApiResponse<Vocabulary[]>>("/vocabularies/review", {
-              params: { limit: 50 },
-            }),
+            api.get<ApiResponse<FlashcardProgressStats>>("/vocabularies/progress-stats"),
             api.get<ApiResponse<WeakWord[]>>("/vocabularies/weak", {
               params: { limit: 5 },
             }),
@@ -195,8 +193,7 @@ export default function DashboardPage() {
         if (streakRes.status === "fulfilled") setStreak(streakRes.value.data.body);
         if (quizRes.status === "fulfilled") setQuizStats(quizRes.value.data.body);
         if (convRes.status === "fulfilled") setConvStats(convRes.value.data.body);
-        if (reviewRes.status === "fulfilled")
-          setReviewDue(reviewRes.value.data.body.length);
+        if (flashcardRes.status === "fulfilled") setFlashcardStats(flashcardRes.value.data.body);
         if (weakRes.status === "fulfilled") setWeakWords(weakRes.value.data.body);
         if (meRes.status === "fulfilled")
           setDisplayName(meRes.value.data.body.displayName ?? "");
@@ -224,10 +221,10 @@ export default function DashboardPage() {
   }
 
   const badges =
-    streak && quizStats && convStats && reviewDue !== null
+    streak && quizStats && convStats && flashcardStats
       ? BADGE_DEFS.map((b) => ({
           ...b,
-          earned: b.check(streak, quizStats, convStats, reviewDue),
+          earned: b.check(streak, quizStats, convStats, flashcardStats.dueToday),
         }))
       : [];
 
@@ -325,37 +322,51 @@ export default function DashboardPage() {
           </StatCard>
         )}
 
-        {/* Review Due */}
-        {reviewDue !== null && (
-          <StatCard title="📚 ทบทวนวันนี้" accent="#22d3ee">
-            <div
-              style={{
-                fontSize: "2.4rem",
-                fontWeight: 900,
-                color: reviewDue > 0 ? "#22d3ee" : "#86efac",
-                lineHeight: 1,
-              }}
-            >
-              {reviewDue}
-              <span style={{ fontSize: "1rem", fontWeight: 600 }}> คำ</span>
-            </div>
-            <div style={{ marginTop: "0.75rem" }}>
-              <Link
-                href="/flashcard"
+        {/* Flashcard Progress */}
+        {flashcardStats && (
+          <StatCard title="🃏 Flashcard" accent="#22d3ee">
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "#64748b", fontSize: "0.8rem" }}>ทบทวนแล้ว</span>
+                <span style={{ fontWeight: 700, color: "#e2e8f0" }}>{flashcardStats.totalReviewed} คำ</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "#64748b", fontSize: "0.8rem" }}>เชี่ยวชาญ</span>
+                <span style={{ fontWeight: 700, color: "#86efac" }}>{flashcardStats.totalMastered} คำ</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "#64748b", fontSize: "0.8rem" }}>Accuracy</span>
+                <span style={{ fontWeight: 700, color: "#facc15" }}>
+                  {Math.round(flashcardStats.accuracy * 100)}%
+                </span>
+              </div>
+              <div
                 style={{
-                  display: "inline-block",
-                  padding: "0.35rem 0.9rem",
+                  marginTop: "0.25rem",
+                  padding: "0.4rem 0.75rem",
                   borderRadius: 8,
-                  background: reviewDue > 0 ? "rgba(34,211,238,0.15)" : "transparent",
-                  border: `1px solid ${reviewDue > 0 ? "rgba(34,211,238,0.3)" : "var(--card-border)"}`,
-                  color: reviewDue > 0 ? "#22d3ee" : "#64748b",
-                  fontSize: "0.8rem",
-                  fontWeight: 600,
-                  textDecoration: "none",
+                  background: flashcardStats.dueToday > 0 ? "rgba(34,211,238,0.1)" : "rgba(134,239,172,0.1)",
+                  border: `1px solid ${flashcardStats.dueToday > 0 ? "rgba(34,211,238,0.25)" : "rgba(134,239,172,0.25)"}`,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
                 }}
               >
-                {reviewDue > 0 ? "เริ่มทบทวน →" : "ครบแล้ว! ⭐"}
-              </Link>
+                <span style={{ fontSize: "0.78rem", color: flashcardStats.dueToday > 0 ? "#22d3ee" : "#86efac", fontWeight: 600 }}>
+                  {flashcardStats.dueToday > 0 ? `Due วันนี้: ${flashcardStats.dueToday} คำ` : "ทบทวนครบแล้ว ⭐"}
+                </span>
+                <Link
+                  href="/flashcard"
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#94a3b8",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                  }}
+                >
+                  ไป →
+                </Link>
+              </div>
             </div>
           </StatCard>
         )}
