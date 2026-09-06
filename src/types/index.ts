@@ -146,6 +146,23 @@ export interface FlashcardProgressStats {
   dueToday: number;
 }
 
+export interface UserProfile {
+  id: string;
+  uid: string;
+  displayName?: string;
+  createdAt: string;
+  contributedWordsCount: number;
+  freeAccessUntil: string | null;
+}
+
+export interface ContributeWordResult {
+  vocabulary: Vocabulary;
+  contributedWordsCount: number;
+  contributionGoal: number;
+  freeAccessUntil: string | null;
+  bonusGranted: boolean;
+}
+
 export interface DictationItem {
   vocabularyId: number;
   sentence: string;

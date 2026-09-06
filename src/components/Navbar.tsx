@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { FEATURE_FILL_BLANK_ENABLED } from "@/lib/features";
 import api from "@/lib/api";
-import { ApiResponse, StreakInfo } from "@/types";
+import { ApiResponse, StreakInfo, UserProfile } from "@/types";
 
 // Top-level links (always visible on desktop)
 const topLinks = [
@@ -12,6 +12,7 @@ const topLinks = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/vocabulary", label: "คำศัพท์" },
   { href: "/verb-forms", label: "กริยา 3 ช่อง" },
+  { href: "/contribute", label: "✨ เพิ่มคำศัพท์" },
 ];
 
 // Practice dropdown links
@@ -39,6 +40,7 @@ export default function Navbar() {
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [streak, setStreak] = useState<number>(0);
   const [goalMet, setGoalMet] = useState(false);
+  const [daysLeft, setDaysLeft] = useState<number | null>(null);
   const practiceRef = useRef<HTMLDivElement>(null);
 
   const loggedIn = useSyncExternalStore(
@@ -53,17 +55,24 @@ export default function Navbar() {
 
   useEffect(() => {
     if (!loggedIn) return;
-    const fetchStreak = () => {
+    const refresh = () => {
       api.get<ApiResponse<StreakInfo>>("/user/streak")
         .then((res) => {
           setStreak(res.data.body.currentStreak);
           setGoalMet(res.data.body.goalMet);
         })
         .catch(() => {});
+      api.get<ApiResponse<UserProfile>>("/user/me")
+        .then((res) => {
+          const until = res.data.body.freeAccessUntil;
+          const diffMs = until ? new Date(until).getTime() - Date.now() : 0;
+          setDaysLeft(diffMs > 0 ? Math.ceil(diffMs / (1000 * 60 * 60 * 24)) : null);
+        })
+        .catch(() => {});
     };
-    fetchStreak();
-    window.addEventListener("vocab:streak-refresh", fetchStreak);
-    return () => window.removeEventListener("vocab:streak-refresh", fetchStreak);
+    refresh();
+    window.addEventListener("vocab:streak-refresh", refresh);
+    return () => window.removeEventListener("vocab:streak-refresh", refresh);
   }, [loggedIn]);
 
   // Close practice dropdown when clicking outside
@@ -217,6 +226,29 @@ export default function Navbar() {
               </span>
             )}
 
+            {/* Free-access days remaining badge */}
+            {daysLeft !== null && (
+              <span
+                title={`เหลือสิทธิ์ใช้งานฟรีอีก ${daysLeft} วัน`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.2rem",
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  color: "#4ade80",
+                  padding: "0.3rem 0.6rem",
+                  borderRadius: 8,
+                  background: "rgba(74,222,128,0.12)",
+                  border: "1px solid rgba(74,222,128,0.3)",
+                  cursor: "default",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                ⏳ {daysLeft} วัน
+              </span>
+            )}
+
             <button
               onClick={handleLogout}
               className="rounded-lg transition-all duration-150 whitespace-nowrap px-[0.85rem] py-[0.4rem] text-[0.88rem] ml-1"
@@ -288,11 +320,18 @@ export default function Navbar() {
 
           {/* Footer row */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.5rem", padding: "0.5rem 0.25rem 0.25rem", borderTop: "1px solid var(--card-border)" }}>
-            {streak > 0 && (
-              <span style={{ fontSize: "0.85rem", fontWeight: 700, color: goalMet ? "#facc15" : "#fb923c" }}>
-                🔥 {streak} วัน{goalMet ? " · ครบเป้าหมาย!" : ""}
-              </span>
-            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+              {streak > 0 && (
+                <span style={{ fontSize: "0.85rem", fontWeight: 700, color: goalMet ? "#facc15" : "#fb923c" }}>
+                  🔥 {streak} วัน{goalMet ? " · ครบเป้าหมาย!" : ""}
+                </span>
+              )}
+              {daysLeft !== null && (
+                <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#4ade80" }}>
+                  ⏳ เหลือสิทธิ์ใช้งานฟรี {daysLeft} วัน
+                </span>
+              )}
+            </div>
             <button
               onClick={() => { setMenuOpen(false); handleLogout(); }}
               className="rounded-lg transition-all duration-150 px-3 py-2 text-sm ml-auto"
