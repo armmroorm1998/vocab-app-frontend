@@ -13,6 +13,7 @@ const topLinks = [
   { href: "/vocabulary", label: "คำศัพท์" },
   { href: "/verb-forms", label: "กริยา 3 ช่อง" },
   { href: "/contribute", label: "✨ เพิ่มคำศัพท์" },
+  { href: "/donate", label: "🙏 สนับสนุน" },
 ];
 
 // Practice dropdown links
@@ -41,6 +42,7 @@ export default function Navbar() {
   const [streak, setStreak] = useState<number>(0);
   const [goalMet, setGoalMet] = useState(false);
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const practiceRef = useRef<HTMLDivElement>(null);
 
   const loggedIn = useSyncExternalStore(
@@ -64,6 +66,7 @@ export default function Navbar() {
         .catch(() => {});
       api.get<ApiResponse<UserProfile>>("/user/me")
         .then((res) => {
+          setIsAdmin(res.data.body.isAdmin);
           const until = res.data.body.freeAccessUntil;
           const diffMs = until ? new Date(until).getTime() - Date.now() : 0;
           setDaysLeft(diffMs > 0 ? Math.ceil(diffMs / (1000 * 60 * 60 * 24)) : null);
@@ -136,6 +139,19 @@ export default function Navbar() {
                 </Link>
               );
             })}
+            {isAdmin && (
+              <Link
+                href="/vocab/admin"
+                className="rounded-lg no-underline transition-all duration-150 whitespace-nowrap px-[0.85rem] py-[0.4rem] text-[0.88rem]"
+                style={{
+                  fontWeight: pathname === "/vocab/admin" ? 600 : 400,
+                  color: pathname === "/vocab/admin" ? "#fff" : "#94a3b8",
+                  background: pathname === "/vocab/admin" ? "var(--accent)" : "transparent",
+                }}
+              >
+                🛠️ Admin
+              </Link>
+            )}
 
             {/* ฝึก dropdown */}
             <div ref={practiceRef} style={{ position: "relative" }}>
@@ -298,6 +314,20 @@ export default function Navbar() {
               </Link>
             );
           })}
+          {isAdmin && (
+            <Link
+              href="/vocab/admin"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-lg no-underline transition-all duration-150 px-3 py-2.5 text-sm"
+              style={{
+                fontWeight: pathname === "/vocab/admin" ? 600 : 400,
+                color: pathname === "/vocab/admin" ? "#fff" : "#94a3b8",
+                background: pathname === "/vocab/admin" ? "var(--accent)" : "transparent",
+              }}
+            >
+              🛠️ Admin
+            </Link>
+          )}
 
           {/* Section: ฝึก */}
           <div style={{ color: "#475569", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", padding: "0.75rem 0.75rem 0.25rem" }}>

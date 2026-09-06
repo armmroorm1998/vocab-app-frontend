@@ -153,6 +153,7 @@ export interface UserProfile {
   createdAt: string;
   contributedWordsCount: number;
   freeAccessUntil: string | null;
+  isAdmin: boolean;
 }
 
 export interface ContributeWordResult {
@@ -161,6 +162,44 @@ export interface ContributeWordResult {
   contributionGoal: number;
   freeAccessUntil: string | null;
   bonusGranted: boolean;
+}
+
+export interface AdminUser {
+  id: string;
+  uid: string;
+  displayName?: string;
+  createdAt: string;
+  contributedWordsCount: number;
+  freeAccessUntil: string | null;
+  rewardedGoalStreak: number;
+  isAdmin: boolean;
+}
+
+export interface AdminUserListResponse extends ApiResponse<AdminUser[]> {
+  page: number;
+  limit: number;
+}
+
+export const RUNNABLE_SCRIPTS = [
+  "seed:categories",
+  "auto-categorize",
+  "auto-level",
+  "vocab:stats",
+  "vocab:generate",
+  "fill:examples",
+  "conversation:seed",
+  "conversation:reset",
+  "conversation:generate",
+] as const;
+
+export type RunnableScript = (typeof RUNNABLE_SCRIPTS)[number];
+
+export interface RunScriptResult {
+  script: string;
+  command: string[];
+  exitCode: number;
+  stdout: string;
+  stderr: string;
 }
 
 export interface DictationItem {
