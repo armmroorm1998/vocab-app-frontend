@@ -189,13 +189,17 @@ export default function ContributePage() {
 
   return (
     <div style={{ maxWidth: 700, margin: "0 auto", padding: "2rem 1.5rem" }}>
-      <h1 style={{ fontSize: "1.8rem", fontWeight: 700, marginBottom: "0.5rem" }}>
-        ✨ เพิ่มคำศัพท์ แลกสิทธิ์ใช้งานฟรี
-      </h1>
-      <p style={{ color: "#94a3b8", fontSize: "0.95rem", lineHeight: 1.6, marginBottom: "1.5rem" }}>
-        เพิ่มคำศัพท์ภาษาอังกฤษที่ยังไม่มีในระบบครบ {GOAL} คำ รับสิทธิ์ใช้งานฟรีเพิ่ม 7 วัน
-        ระบบจะตรวจสอบคำซ้ำและให้ AI ช่วยเติมความหมาย คำอ่าน และหมวดหมู่ให้อัตโนมัติ
-      </p>
+      {!activeAccess && (
+        <>
+          <h1 style={{ fontSize: "1.8rem", fontWeight: 700, marginBottom: "0.5rem" }}>
+            ✨ เพิ่มคำศัพท์ แลกสิทธิ์ใช้งานฟรี
+          </h1>
+          <p style={{ color: "#94a3b8", fontSize: "0.95rem", lineHeight: 1.6, marginBottom: "1.5rem" }}>
+            เพิ่มคำศัพท์ภาษาอังกฤษที่ยังไม่มีในระบบครบ {GOAL} คำ รับสิทธิ์ใช้งานฟรีเพิ่ม 7 วัน
+            ระบบจะตรวจสอบคำซ้ำและให้ AI ช่วยเติมความหมาย คำอ่าน และหมวดหมู่ให้อัตโนมัติ
+          </p>
+        </>
+      )}
 
       {lockedRedirect && !activeAccess && (
         <div
@@ -230,72 +234,76 @@ export default function ContributePage() {
         </div>
       )}
 
-      {/* Progress */}
-      <div
-        style={{
-          background: "var(--card)",
-          border: "1px solid var(--card-border)",
-          borderRadius: 12,
-          padding: "1rem 1.25rem",
-          marginBottom: "1.5rem",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
-          <span style={{ color: "#cbd5e1", fontSize: "0.9rem", fontWeight: 600 }}>
-            ความคืบหน้า
-          </span>
-          <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>
-            {contributedCount}/{GOAL} คำ
-          </span>
-        </div>
-        <div style={{ background: "#1e293b", borderRadius: 999, height: 8, overflow: "hidden" }}>
+      {!activeAccess && (
+        <>
+          {/* Progress */}
           <div
             style={{
-              width: `${progressPct}%`,
-              height: "100%",
-              background: "linear-gradient(90deg,#6366f1,#22d3ee)",
-              transition: "width 0.3s ease",
+              background: "var(--card)",
+              border: "1px solid var(--card-border)",
+              borderRadius: 12,
+              padding: "1rem 1.25rem",
+              marginBottom: "1.5rem",
             }}
-          />
-        </div>
-      </div>
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+              <span style={{ color: "#cbd5e1", fontSize: "0.9rem", fontWeight: 600 }}>
+                ความคืบหน้า
+              </span>
+              <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>
+                {contributedCount}/{GOAL} คำ
+              </span>
+            </div>
+            <div style={{ background: "#1e293b", borderRadius: 999, height: 8, overflow: "hidden" }}>
+              <div
+                style={{
+                  width: `${progressPct}%`,
+                  height: "100%",
+                  background: "linear-gradient(90deg,#6366f1,#22d3ee)",
+                  transition: "width 0.3s ease",
+                }}
+              />
+            </div>
+          </div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem" }}>
-        <input
-          type="text"
-          placeholder="พิมพ์คำศัพท์ภาษาอังกฤษ เช่น serendipity"
-          value={word}
-          onChange={(e) => setWord(e.target.value)}
-          disabled={submitting}
-          style={{
-            flex: 1,
-            background: "var(--card)",
-            border: "1px solid var(--card-border)",
-            borderRadius: 8,
-            padding: "0.7rem 1rem",
-            color: "#e2e8f0",
-            fontSize: "1rem",
-            outline: "none",
-          }}
-        />
-        <button
-          type="submit"
-          disabled={submitting || !word.trim()}
-          style={{
-            padding: "0.7rem 1.5rem",
-            borderRadius: 8,
-            background: submitting || !word.trim() ? "#1e293b" : "var(--accent)",
-            color: submitting || !word.trim() ? "#475569" : "#fff",
-            border: "none",
-            cursor: submitting || !word.trim() ? "default" : "pointer",
-            fontWeight: 600,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {submitting ? "กำลังตรวจสอบ..." : "เพิ่มคำศัพท์"}
-        </button>
-      </form>
+          {/* Form */}
+          <form onSubmit={handleSubmit} style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem" }}>
+            <input
+              type="text"
+              placeholder="พิมพ์คำศัพท์ภาษาอังกฤษ เช่น serendipity"
+              value={word}
+              onChange={(e) => setWord(e.target.value)}
+              disabled={submitting}
+              style={{
+                flex: 1,
+                background: "var(--card)",
+                border: "1px solid var(--card-border)",
+                borderRadius: 8,
+                padding: "0.7rem 1rem",
+                color: "#e2e8f0",
+                fontSize: "1rem",
+                outline: "none",
+              }}
+            />
+            <button
+              type="submit"
+              disabled={submitting || !word.trim()}
+              style={{
+                padding: "0.7rem 1.5rem",
+                borderRadius: 8,
+                background: submitting || !word.trim() ? "#1e293b" : "var(--accent)",
+                color: submitting || !word.trim() ? "#475569" : "#fff",
+                border: "none",
+                cursor: submitting || !word.trim() ? "default" : "pointer",
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {submitting ? "กำลังตรวจสอบ..." : "เพิ่มคำศัพท์"}
+            </button>
+          </form>
+        </>
+      )}
 
       {error && (
         <div
