@@ -21,6 +21,7 @@ const practiceLinks = [
   { href: "/flashcard", label: "🃏 Flashcard" },
   { href: "/quiz", label: "🎯 Quiz" },
   { href: "/conversation-quiz", label: "💬 บทสนทนา" },
+  { href: "/listening", label: "🎧 Listening & Shadowing" },
   { href: "/dictation", label: "🎧 Dictation" },
   { href: "/sentence-drill", label: "📖 Sentence Drill" },
   ...(FEATURE_FILL_BLANK_ENABLED ? [{ href: "/fill-blank", label: "📝 เติมคำ" }] : []),

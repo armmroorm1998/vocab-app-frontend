@@ -83,6 +83,55 @@ export type ConversationQuizResponse = ApiResponse<ConversationQuizQuestion[]>;
 export type ConversationQuizCategoryResponse =
   ApiResponse<ConversationQuizCategory[]>;
 
+export interface ListeningLessonSummary {
+  key: string;
+  title: string;
+  emoji: string | null;
+  displayOrder: number;
+  totalUnits: number;
+}
+
+export type ListeningLessonsResponse = ApiResponse<ListeningLessonSummary[]>;
+
+export interface ListeningUnitSummary {
+  key: string;
+  title: string;
+  emoji: string | null;
+  displayOrder: number;
+  videoId: string;
+  startSeconds: number;
+  endSeconds: number;
+  totalLines: number;
+}
+
+export interface ListeningLine {
+  orderIndex: number;
+  speaker: string;
+  textEn: string;
+  textTh: string | null;
+}
+
+export interface ListeningClozeLine {
+  orderIndex: number;
+  speaker: string;
+  textEn: string;
+  textTh: string | null;
+  blankText: string | null;
+  answer: string | null;
+}
+
+export interface ListeningUnitDetail extends ListeningUnitSummary {
+  lines: ListeningLine[];
+}
+
+export interface ListeningUnitCloze extends ListeningUnitSummary {
+  lines: ListeningClozeLine[];
+}
+
+export type ListeningUnitsResponse = ApiResponse<ListeningUnitSummary[]>;
+export type ListeningUnitDetailResponse = ApiResponse<ListeningUnitDetail>;
+export type ListeningUnitClozeResponse = ApiResponse<ListeningUnitCloze>;
+
 export interface SubmitAnswerResult {
   isCorrect: boolean;
   score: number;
@@ -190,6 +239,7 @@ export const RUNNABLE_SCRIPTS = [
   "conversation:seed",
   "conversation:reset",
   "conversation:generate",
+  "listening:seed",
 ] as const;
 
 export type RunnableScript = (typeof RUNNABLE_SCRIPTS)[number];
