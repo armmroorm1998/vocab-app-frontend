@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | { read -r f; if echo \"$f\" | grep -qE '(^|/)\\.env[^/]*$|(^|/)\\.git(/|$)|(^|/)node_modules(/|$)'; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked: protected path (.env*, .git/, node_modules/)\"}}'; fi; } 2>/dev/null",
+            "statusMessage": "Checking protected paths..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.command // empty' | { read -r cmd; if echo \"$cmd\" | grep -qE 'git[[:space:]]+add.*\\.env'; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked: attempting to git add a .env* file\"}}'; elif echo \"$cmd\" | grep -qE 'git[[:space:]]+commit' && git diff --cached --name-only 2>/dev/null | grep -qE '(^|/)\\.env'; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked: a .env* file is staged for commit\"}}'; fi; } 2>/dev/null",
+            "statusMessage": "Checking for .env in git command..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_response.filePath // .tool_input.file_path // empty' | { read -r f; if echo \"$f\" | grep -qE '(^|/)src/.*\\.(ts|tsx)$'; then npx eslint --fix \"$f\"; fi; } 2>/dev/null || true",
+            "statusMessage": "Running eslint --fix..."
+          }
+        ]
+      }
+    ]
+  }
+}
