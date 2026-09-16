@@ -16,6 +16,16 @@ import {
   RUNNABLE_SCRIPTS,
   RunnableScript,
   RunScriptResult,
+  ConversationQuizCategory,
+  ConversationQuizCategoryResponse,
+  ConversationQuizQuestion,
+  ConversationQuizResponse,
+  ListeningLessonSummary,
+  ListeningLessonsResponse,
+  ListeningUnitSummary,
+  ListeningUnitsResponse,
+  ListeningUnitDetail,
+  ListeningUnitDetailResponse,
 } from "@/types";
 
 const cardStyle: React.CSSProperties = {
@@ -73,7 +83,7 @@ function extractErrorMessage(err: unknown): string {
   return "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง";
 }
 
-const TABS = ["คำศัพท์", "หมวดหมู่", "Scripts", "ผู้ใช้งาน"] as const;
+const TABS = ["คำศัพท์", "หมวดหมู่", "บทสนทนา", "Listening", "Scripts", "ผู้ใช้งาน"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function AdminPage() {
@@ -137,6 +147,8 @@ export default function AdminPage() {
 
       {tab === "คำศัพท์" && <VocabTab />}
       {tab === "หมวดหมู่" && <CategoryTab />}
+      {tab === "บทสนทนา" && <ConversationQuizTab />}
+      {tab === "Listening" && <ListeningTab />}
       {tab === "Scripts" && <ScriptsTab />}
       {tab === "ผู้ใช้งาน" && <UsersTab />}
     </div>
@@ -449,6 +461,643 @@ function CategoryTab() {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+// ─── Conversation Quiz tab ───────────────────────────────────────────────────
+
+const EMPTY_CATEGORY_FORM = { key: "", name: "", emoji: "", displayOrder: "" as number | "" };
+const EMPTY_QUESTION_FORM = {
+  speaker: "",
+  prompt: "",
+  choices: "",
+  correctAnswer: "",
+  naturalAnswer: "",
+  dialogueLines: "",
+  orderIndex: "" as number | "",
+};
+
+function parseLines(text: string): string[] {
+  return text.split("\n").map((s) => s.trim()).filter(Boolean);
+}
+
+function parseDialogueLines(text: string): { speaker: string; text: string }[] {
+  return parseLines(text).map((line) => {
+    const idx = line.indexOf(":");
+    if (idx === -1) return { speaker: "Speaker", text: line };
+    return { speaker: line.slice(0, idx).trim(), text: line.slice(idx + 1).trim() };
+  });
+}
+
+function formatDialogueLines(lines: { speaker: string; text: string }[] | undefined): string {
+  return (lines ?? []).map((l) => `${l.speaker}: ${l.text}`).join("\n");
+}
+
+function ConversationQuizTab() {
+  const [categories, setCategories] = useState<ConversationQuizCategory[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [questions, setQuestions] = useState<ConversationQuizQuestion[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const [catForm, setCatForm] = useState(EMPTY_CATEGORY_FORM);
+  const [editingCatId, setEditingCatId] = useState<number | null>(null);
+
+  const [qForm, setQForm] = useState(EMPTY_QUESTION_FORM);
+  const [editingQId, setEditingQId] = useState<number | null>(null);
+  const [showQForm, setShowQForm] = useState(false);
+
+  const loadCategories = useCallback(async () => {
+    try {
+      const res = await api.get<ConversationQuizCategoryResponse>("/conversation-quiz/categories");
+      setCategories(res.data.body);
+    } catch {
+      setCategories([]);
+    }
+  }, []);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { loadCategories(); }, [loadCategories]);
+
+  const selectedCategory = categories.find((c) => c.id === selectedCategoryId) ?? null;
+
+  const loadQuestions = useCallback(async (categoryKey: string) => {
+    try {
+      const res = await api.get<ConversationQuizResponse>("/conversation-quiz/questions", { params: { categoryKey } });
+      setQuestions(res.data.body);
+    } catch {
+      setQuestions([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedCategory) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void loadQuestions(selectedCategory.key);
+    } else {
+      setQuestions([]);
+    }
+  }, [selectedCategory, loadQuestions]);
+
+  const resetCatForm = () => { setEditingCatId(null); setCatForm(EMPTY_CATEGORY_FORM); };
+
+  const handleCatSubmit = async () => {
+    setError(null);
+    try {
+      if (editingCatId) {
+        await api.put(`/conversation-quiz/categories/${editingCatId}`, {
+          name: catForm.name,
+          emoji: catForm.emoji || undefined,
+          displayOrder: catForm.displayOrder === "" ? undefined : Number(catForm.displayOrder),
+        });
+      } else {
+        await api.post("/conversation-quiz/categories", {
+          key: catForm.key,
+          name: catForm.name,
+          emoji: catForm.emoji || undefined,
+          displayOrder: catForm.displayOrder === "" ? undefined : Number(catForm.displayOrder),
+        });
+      }
+      resetCatForm();
+      void loadCategories();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
+  const handleCatDelete = async (id: number) => {
+    if (!confirm("ยืนยันลบหมวดนี้? คำถามทั้งหมดในหมวดจะถูกลบไปด้วย")) return;
+    try {
+      await api.delete(`/conversation-quiz/categories/${id}`);
+      if (selectedCategoryId === id) setSelectedCategoryId(null);
+      void loadCategories();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
+  const resetQForm = () => {
+    setEditingQId(null);
+    setQForm(EMPTY_QUESTION_FORM);
+    setShowQForm(false);
+  };
+
+  const startEditQuestion = (q: ConversationQuizQuestion) => {
+    setEditingQId(q.id);
+    setQForm({
+      speaker: q.speaker,
+      prompt: q.prompt,
+      choices: q.choices.join("\n"),
+      correctAnswer: q.correctAnswer,
+      naturalAnswer: q.naturalAnswer,
+      dialogueLines: formatDialogueLines(q.dialogueLines),
+      orderIndex: q.orderIndex,
+    });
+    setShowQForm(true);
+  };
+
+  const handleQSubmit = async () => {
+    if (!selectedCategory) return;
+    setError(null);
+    try {
+      const payload = {
+        categoryId: selectedCategory.id,
+        speaker: qForm.speaker || undefined,
+        prompt: qForm.prompt,
+        choices: parseLines(qForm.choices),
+        correctAnswer: qForm.correctAnswer,
+        naturalAnswer: qForm.naturalAnswer,
+        dialogueLines: qForm.dialogueLines.trim() ? parseDialogueLines(qForm.dialogueLines) : undefined,
+        orderIndex: qForm.orderIndex === "" ? undefined : Number(qForm.orderIndex),
+      };
+      if (editingQId) {
+        await api.put(`/conversation-quiz/questions/${editingQId}`, payload);
+      } else {
+        await api.post("/conversation-quiz/questions", payload);
+      }
+      resetQForm();
+      void loadQuestions(selectedCategory.key);
+      void loadCategories();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
+  const handleQDelete = async (id: number) => {
+    if (!confirm("ยืนยันลบคำถามนี้?")) return;
+    try {
+      await api.delete(`/conversation-quiz/questions/${id}`);
+      if (selectedCategory) void loadQuestions(selectedCategory.key);
+      void loadCategories();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      {error && <p style={{ color: "#f87171", fontSize: "0.85rem" }}>{error}</p>}
+
+      <div style={cardStyle}>
+        <h3 style={{ marginBottom: "0.75rem", fontWeight: 700 }}>{editingCatId ? "แก้ไขหมวดบทสนทนา" : "เพิ่มหมวดบทสนทนา"}</h3>
+        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+          {!editingCatId && (
+            <input placeholder="key (เช่น job-interview)" value={catForm.key} onChange={(e) => setCatForm({ ...catForm, key: e.target.value })} style={{ ...inputStyle, flex: "1 1 160px" }} />
+          )}
+          <input placeholder="ชื่อหมวด" value={catForm.name} onChange={(e) => setCatForm({ ...catForm, name: e.target.value })} style={{ ...inputStyle, flex: "1 1 160px" }} />
+          <input placeholder="emoji" value={catForm.emoji} onChange={(e) => setCatForm({ ...catForm, emoji: e.target.value })} style={{ ...inputStyle, width: 80 }} />
+          <input placeholder="ลำดับ" type="number" value={catForm.displayOrder} onChange={(e) => setCatForm({ ...catForm, displayOrder: e.target.value === "" ? "" : Number(e.target.value) })} style={{ ...inputStyle, width: 90 }} />
+          <button onClick={handleCatSubmit} style={btnStyle("primary")}>{editingCatId ? "บันทึก" : "เพิ่ม"}</button>
+          {editingCatId && <button onClick={resetCatForm} style={btnStyle("ghost")}>ยกเลิก</button>}
+        </div>
+      </div>
+
+      <div style={{ ...cardStyle, padding: 0, overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th style={thStyle}>หมวด</th>
+              <th style={thStyle}>Key</th>
+              <th style={thStyle}>คำถาม</th>
+              <th style={thStyle}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {categories.map((c) => (
+              <tr key={c.id} style={{ background: selectedCategoryId === c.id ? "rgba(99,102,241,0.08)" : undefined }}>
+                <td style={{ ...tdStyle, fontWeight: 700, color: "#e2e8f0", cursor: "pointer" }} onClick={() => setSelectedCategoryId(c.id)}>
+                  {c.emoji ?? "💬"} {c.name}
+                </td>
+                <td style={tdStyle}>{c.key}</td>
+                <td style={tdStyle}>{c.totalQuestions}</td>
+                <td style={tdStyle}>
+                  <div style={{ display: "flex", gap: "0.4rem" }}>
+                    <button onClick={() => setSelectedCategoryId(c.id)} style={btnStyle("ghost")}>จัดการคำถาม</button>
+                    <button
+                      onClick={() => { setEditingCatId(c.id); setCatForm({ key: c.key, name: c.name, emoji: c.emoji ?? "", displayOrder: c.displayOrder }); }}
+                      style={btnStyle("ghost")}
+                    >
+                      แก้ไข
+                    </button>
+                    <button onClick={() => handleCatDelete(c.id)} style={btnStyle("danger")}>ลบ</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {selectedCategory && (
+        <div style={cardStyle}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+            <h3 style={{ fontWeight: 700 }}>คำถามในหมวด: {selectedCategory.emoji ?? "💬"} {selectedCategory.name}</h3>
+            {!showQForm && (
+              <button onClick={() => { resetQForm(); setShowQForm(true); }} style={btnStyle("primary")}>+ เพิ่มคำถาม</button>
+            )}
+          </div>
+
+          {showQForm && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1rem", padding: "0.9rem", border: "1px solid var(--card-border)", borderRadius: 8 }}>
+              <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+                <input placeholder="speaker" value={qForm.speaker} onChange={(e) => setQForm({ ...qForm, speaker: e.target.value })} style={{ ...inputStyle, flex: "1 1 140px" }} />
+                <input placeholder="ลำดับ" type="number" value={qForm.orderIndex} onChange={(e) => setQForm({ ...qForm, orderIndex: e.target.value === "" ? "" : Number(e.target.value) })} style={{ ...inputStyle, width: 90 }} />
+              </div>
+              <input placeholder="prompt (คำถาม)" value={qForm.prompt} onChange={(e) => setQForm({ ...qForm, prompt: e.target.value })} style={inputStyle} />
+              <textarea placeholder="choices (บรรทัดละ 1 ตัวเลือก)" value={qForm.choices} onChange={(e) => setQForm({ ...qForm, choices: e.target.value })} rows={4} style={{ ...inputStyle, fontFamily: "inherit", resize: "vertical" }} />
+              <input placeholder="correctAnswer (ต้องตรงกับหนึ่งใน choices)" value={qForm.correctAnswer} onChange={(e) => setQForm({ ...qForm, correctAnswer: e.target.value })} style={inputStyle} />
+              <input placeholder="naturalAnswer" value={qForm.naturalAnswer} onChange={(e) => setQForm({ ...qForm, naturalAnswer: e.target.value })} style={inputStyle} />
+              <textarea
+                placeholder={"dialogueLines (บรรทัดละ 1 บท รูปแบบ Speaker: ข้อความ) — เว้นว่างได้"}
+                value={qForm.dialogueLines}
+                onChange={(e) => setQForm({ ...qForm, dialogueLines: e.target.value })}
+                rows={4}
+                style={{ ...inputStyle, fontFamily: "inherit", resize: "vertical" }}
+              />
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button onClick={handleQSubmit} style={btnStyle("primary")}>{editingQId ? "บันทึก" : "เพิ่มคำถาม"}</button>
+                <button onClick={resetQForm} style={btnStyle("ghost")}>ยกเลิก</button>
+              </div>
+            </div>
+          )}
+
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Speaker</th>
+                  <th style={thStyle}>Prompt</th>
+                  <th style={thStyle}>Correct Answer</th>
+                  <th style={thStyle}>ลำดับ</th>
+                  <th style={thStyle}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {questions.map((q) => (
+                  <tr key={q.id}>
+                    <td style={tdStyle}>{q.speaker}</td>
+                    <td style={tdStyle}>{q.prompt}</td>
+                    <td style={tdStyle}>{q.correctAnswer}</td>
+                    <td style={tdStyle}>{q.orderIndex}</td>
+                    <td style={tdStyle}>
+                      <div style={{ display: "flex", gap: "0.4rem" }}>
+                        <button onClick={() => startEditQuestion(q)} style={btnStyle("ghost")}>แก้ไข</button>
+                        <button onClick={() => handleQDelete(q.id)} style={btnStyle("danger")}>ลบ</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Listening tab ───────────────────────────────────────────────────────────
+
+const EMPTY_LESSON_FORM = { key: "", title: "", emoji: "", displayOrder: "" as number | "" };
+const EMPTY_UNIT_FORM = {
+  key: "",
+  title: "",
+  emoji: "",
+  displayOrder: "" as number | "",
+  videoId: "",
+  startSeconds: "" as number | "",
+  endSeconds: "" as number | "",
+  linesText: "",
+};
+
+function parseUnitLines(text: string): { speaker: string; textEn: string; textTh?: string }[] {
+  return parseLines(text).map((line) => {
+    const parts = line.split("|").map((p) => p.trim());
+    return {
+      speaker: parts[0] ?? "Speaker",
+      textEn: parts[1] ?? "",
+      textTh: parts[2] || undefined,
+    };
+  });
+}
+
+function formatUnitLines(lines: { speaker: string; textEn: string; textTh: string | null }[]): string {
+  return lines.map((l) => `${l.speaker} | ${l.textEn} | ${l.textTh ?? ""}`).join("\n");
+}
+
+function ListeningTab() {
+  const [lessons, setLessons] = useState<ListeningLessonSummary[]>([]);
+  const [selectedLessonId, setSelectedLessonId] = useState<number | null>(null);
+  const [units, setUnits] = useState<ListeningUnitSummary[]>([]);
+  const [selectedUnitId, setSelectedUnitId] = useState<number | null>(null);
+  const [unitDetail, setUnitDetail] = useState<ListeningUnitDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [lessonForm, setLessonForm] = useState(EMPTY_LESSON_FORM);
+  const [editingLessonId, setEditingLessonId] = useState<number | null>(null);
+
+  const [unitForm, setUnitForm] = useState(EMPTY_UNIT_FORM);
+  const [editingUnitId, setEditingUnitId] = useState<number | null>(null);
+  const [showUnitForm, setShowUnitForm] = useState(false);
+
+  const loadLessons = useCallback(async () => {
+    try {
+      const res = await api.get<ListeningLessonsResponse>("/listening/lessons");
+      setLessons(res.data.body);
+    } catch {
+      setLessons([]);
+    }
+  }, []);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { loadLessons(); }, [loadLessons]);
+
+  const selectedLesson = lessons.find((l) => l.id === selectedLessonId) ?? null;
+
+  const loadUnits = useCallback(async (lessonKey: string) => {
+    try {
+      const res = await api.get<ListeningUnitsResponse>(`/listening/lessons/${lessonKey}/units`);
+      setUnits(res.data.body);
+    } catch {
+      setUnits([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedLesson) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void loadUnits(selectedLesson.key);
+    } else {
+      setUnits([]);
+    }
+    setSelectedUnitId(null);
+    setUnitDetail(null);
+  }, [selectedLesson, loadUnits]);
+
+  const selectedUnit = units.find((u) => u.id === selectedUnitId) ?? null;
+
+  useEffect(() => {
+    if (!selectedUnit) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setUnitDetail(null);
+      return;
+    }
+    api.get<ListeningUnitDetailResponse>(`/listening/units/${selectedUnit.key}`)
+      .then((res) => setUnitDetail(res.data.body))
+      .catch(() => setUnitDetail(null));
+  }, [selectedUnit]);
+
+  const resetLessonForm = () => { setEditingLessonId(null); setLessonForm(EMPTY_LESSON_FORM); };
+
+  const handleLessonSubmit = async () => {
+    setError(null);
+    try {
+      if (editingLessonId) {
+        await api.put(`/listening/lessons/${editingLessonId}`, {
+          title: lessonForm.title,
+          emoji: lessonForm.emoji || undefined,
+          displayOrder: lessonForm.displayOrder === "" ? undefined : Number(lessonForm.displayOrder),
+        });
+      } else {
+        await api.post("/listening/lessons", {
+          key: lessonForm.key,
+          title: lessonForm.title,
+          emoji: lessonForm.emoji || undefined,
+          displayOrder: lessonForm.displayOrder === "" ? undefined : Number(lessonForm.displayOrder),
+        });
+      }
+      resetLessonForm();
+      void loadLessons();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
+  const handleLessonDelete = async (id: number) => {
+    if (!confirm("ยืนยันลบบทเรียนนี้? Unit และบทสนทนาทั้งหมดในบทเรียนจะถูกลบไปด้วย")) return;
+    try {
+      await api.delete(`/listening/lessons/${id}`);
+      if (selectedLessonId === id) setSelectedLessonId(null);
+      void loadLessons();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
+  const resetUnitForm = () => {
+    setEditingUnitId(null);
+    setUnitForm(EMPTY_UNIT_FORM);
+    setShowUnitForm(false);
+  };
+
+  const startEditUnit = (u: ListeningUnitSummary, lines?: { speaker: string; textEn: string; textTh: string | null }[]) => {
+    setEditingUnitId(u.id);
+    setUnitForm({
+      key: u.key,
+      title: u.title,
+      emoji: u.emoji ?? "",
+      displayOrder: u.displayOrder,
+      videoId: u.videoId,
+      startSeconds: u.startSeconds,
+      endSeconds: u.endSeconds,
+      linesText: formatUnitLines(lines ?? []),
+    });
+    setShowUnitForm(true);
+  };
+
+  const handleUnitSubmit = async () => {
+    if (!selectedLesson) return;
+    setError(null);
+    try {
+      const lines = unitForm.linesText.trim() ? parseUnitLines(unitForm.linesText) : undefined;
+      if (editingUnitId) {
+        await api.put(`/listening/units/${editingUnitId}`, {
+          title: unitForm.title,
+          emoji: unitForm.emoji || undefined,
+          displayOrder: unitForm.displayOrder === "" ? undefined : Number(unitForm.displayOrder),
+          videoId: unitForm.videoId,
+          startSeconds: unitForm.startSeconds === "" ? undefined : Number(unitForm.startSeconds),
+          endSeconds: unitForm.endSeconds === "" ? undefined : Number(unitForm.endSeconds),
+          lines,
+        });
+      } else {
+        await api.post("/listening/units", {
+          lessonId: selectedLesson.id,
+          key: unitForm.key,
+          title: unitForm.title,
+          emoji: unitForm.emoji || undefined,
+          displayOrder: unitForm.displayOrder === "" ? undefined : Number(unitForm.displayOrder),
+          videoId: unitForm.videoId,
+          startSeconds: Number(unitForm.startSeconds || 0),
+          endSeconds: Number(unitForm.endSeconds || 0),
+          lines,
+        });
+      }
+      resetUnitForm();
+      void loadUnits(selectedLesson.key);
+      void loadLessons();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
+  const handleUnitDelete = async (id: number) => {
+    if (!confirm("ยืนยันลบ Unit นี้?")) return;
+    try {
+      await api.delete(`/listening/units/${id}`);
+      if (selectedUnitId === id) setSelectedUnitId(null);
+      if (selectedLesson) void loadUnits(selectedLesson.key);
+      void loadLessons();
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      {error && <p style={{ color: "#f87171", fontSize: "0.85rem" }}>{error}</p>}
+
+      <div style={cardStyle}>
+        <h3 style={{ marginBottom: "0.75rem", fontWeight: 700 }}>{editingLessonId ? "แก้ไขบทเรียน" : "เพิ่มบทเรียน"}</h3>
+        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+          {!editingLessonId && (
+            <input placeholder="key (เช่น lesson-3)" value={lessonForm.key} onChange={(e) => setLessonForm({ ...lessonForm, key: e.target.value })} style={{ ...inputStyle, flex: "1 1 160px" }} />
+          )}
+          <input placeholder="ชื่อบทเรียน" value={lessonForm.title} onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })} style={{ ...inputStyle, flex: "1 1 200px" }} />
+          <input placeholder="emoji" value={lessonForm.emoji} onChange={(e) => setLessonForm({ ...lessonForm, emoji: e.target.value })} style={{ ...inputStyle, width: 80 }} />
+          <input placeholder="ลำดับ" type="number" value={lessonForm.displayOrder} onChange={(e) => setLessonForm({ ...lessonForm, displayOrder: e.target.value === "" ? "" : Number(e.target.value) })} style={{ ...inputStyle, width: 90 }} />
+          <button onClick={handleLessonSubmit} style={btnStyle("primary")}>{editingLessonId ? "บันทึก" : "เพิ่ม"}</button>
+          {editingLessonId && <button onClick={resetLessonForm} style={btnStyle("ghost")}>ยกเลิก</button>}
+        </div>
+      </div>
+
+      <div style={{ ...cardStyle, padding: 0, overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th style={thStyle}>บทเรียน</th>
+              <th style={thStyle}>Key</th>
+              <th style={thStyle}>Unit</th>
+              <th style={thStyle}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {lessons.map((l) => (
+              <tr key={l.id} style={{ background: selectedLessonId === l.id ? "rgba(99,102,241,0.08)" : undefined }}>
+                <td style={{ ...tdStyle, fontWeight: 700, color: "#e2e8f0", cursor: "pointer" }} onClick={() => setSelectedLessonId(l.id)}>
+                  {l.emoji ?? "🎬"} {l.title}
+                </td>
+                <td style={tdStyle}>{l.key}</td>
+                <td style={tdStyle}>{l.totalUnits}</td>
+                <td style={tdStyle}>
+                  <div style={{ display: "flex", gap: "0.4rem" }}>
+                    <button onClick={() => setSelectedLessonId(l.id)} style={btnStyle("ghost")}>จัดการ Unit</button>
+                    <button
+                      onClick={() => { setEditingLessonId(l.id); setLessonForm({ key: l.key, title: l.title, emoji: l.emoji ?? "", displayOrder: l.displayOrder }); }}
+                      style={btnStyle("ghost")}
+                    >
+                      แก้ไข
+                    </button>
+                    <button onClick={() => handleLessonDelete(l.id)} style={btnStyle("danger")}>ลบ</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {selectedLesson && (
+        <div style={cardStyle}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+            <h3 style={{ fontWeight: 700 }}>Unit ในบทเรียน: {selectedLesson.emoji ?? "🎬"} {selectedLesson.title}</h3>
+            {!showUnitForm && (
+              <button onClick={() => { resetUnitForm(); setShowUnitForm(true); }} style={btnStyle("primary")}>+ เพิ่ม Unit</button>
+            )}
+          </div>
+
+          {showUnitForm && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1rem", padding: "0.9rem", border: "1px solid var(--card-border)", borderRadius: 8 }}>
+              <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+                {!editingUnitId && (
+                  <input placeholder="key (เช่น lst3-unit1)" value={unitForm.key} onChange={(e) => setUnitForm({ ...unitForm, key: e.target.value })} style={{ ...inputStyle, flex: "1 1 160px" }} />
+                )}
+                <input placeholder="ชื่อ Unit" value={unitForm.title} onChange={(e) => setUnitForm({ ...unitForm, title: e.target.value })} style={{ ...inputStyle, flex: "1 1 160px" }} />
+                <input placeholder="emoji" value={unitForm.emoji} onChange={(e) => setUnitForm({ ...unitForm, emoji: e.target.value })} style={{ ...inputStyle, width: 80 }} />
+                <input placeholder="ลำดับ" type="number" value={unitForm.displayOrder} onChange={(e) => setUnitForm({ ...unitForm, displayOrder: e.target.value === "" ? "" : Number(e.target.value) })} style={{ ...inputStyle, width: 90 }} />
+              </div>
+              <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+                <input placeholder="YouTube videoId" value={unitForm.videoId} onChange={(e) => setUnitForm({ ...unitForm, videoId: e.target.value })} style={{ ...inputStyle, flex: "1 1 160px" }} />
+                <input placeholder="startSeconds" type="number" value={unitForm.startSeconds} onChange={(e) => setUnitForm({ ...unitForm, startSeconds: e.target.value === "" ? "" : Number(e.target.value) })} style={{ ...inputStyle, width: 130 }} />
+                <input placeholder="endSeconds" type="number" value={unitForm.endSeconds} onChange={(e) => setUnitForm({ ...unitForm, endSeconds: e.target.value === "" ? "" : Number(e.target.value) })} style={{ ...inputStyle, width: 130 }} />
+              </div>
+              <textarea
+                placeholder={"บทพูด บรรทัดละ 1 บท รูปแบบ: Speaker | ข้อความอังกฤษ | คำแปลไทย (เว้นว่าง = ไม่แก้บทพูด)"}
+                value={unitForm.linesText}
+                onChange={(e) => setUnitForm({ ...unitForm, linesText: e.target.value })}
+                rows={8}
+                style={{ ...inputStyle, fontFamily: "inherit", resize: "vertical" }}
+              />
+              <p style={{ color: "#64748b", fontSize: "0.78rem" }}>
+                หมายเหตุ: ถ้าใส่บทพูดในช่องนี้ จะแทนที่บทพูดเดิมทั้งหมดของ Unit นี้
+              </p>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button onClick={handleUnitSubmit} style={btnStyle("primary")}>{editingUnitId ? "บันทึก" : "เพิ่ม Unit"}</button>
+                <button onClick={resetUnitForm} style={btnStyle("ghost")}>ยกเลิก</button>
+              </div>
+            </div>
+          )}
+
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Unit</th>
+                  <th style={thStyle}>Key</th>
+                  <th style={thStyle}>วินาที</th>
+                  <th style={thStyle}>บรรทัด</th>
+                  <th style={thStyle}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {units.map((u) => (
+                  <tr key={u.id}>
+                    <td style={{ ...tdStyle, fontWeight: 700, color: "#e2e8f0" }}>{u.emoji ?? "🎧"} {u.title}</td>
+                    <td style={tdStyle}>{u.key}</td>
+                    <td style={tdStyle}>{u.startSeconds}–{u.endSeconds}s</td>
+                    <td style={tdStyle}>{u.totalLines}</td>
+                    <td style={tdStyle}>
+                      <div style={{ display: "flex", gap: "0.4rem" }}>
+                        <button
+                          onClick={async () => {
+                            setSelectedUnitId(u.id);
+                            try {
+                              const res = await api.get<ListeningUnitDetailResponse>(`/listening/units/${u.key}`);
+                              startEditUnit(u, res.data.body.lines);
+                            } catch {
+                              startEditUnit(u);
+                            }
+                          }}
+                          style={btnStyle("ghost")}
+                        >
+                          แก้ไข
+                        </button>
+                        <button onClick={() => handleUnitDelete(u.id)} style={btnStyle("danger")}>ลบ</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {unitDetail && !showUnitForm && (
+            <p style={{ color: "#64748b", fontSize: "0.78rem", marginTop: "0.5rem" }}>
+              เลือก Unit &ldquo;{unitDetail.title}&rdquo; แล้ว — กด &ldquo;แก้ไข&rdquo; เพื่อดู/แก้บทพูดทั้งหมด
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

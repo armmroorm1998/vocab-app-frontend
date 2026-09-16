@@ -6,15 +6,16 @@ import { FEATURE_FILL_BLANK_ENABLED } from "@/lib/features";
 import api from "@/lib/api";
 import { ApiResponse, StreakInfo, UserProfile } from "@/types";
 
-// Top-level links (always visible on desktop)
-const topLinks = [
+// Top-level links (always visible on desktop) — "เพิ่มคำศัพท์" is inserted
+// conditionally in the component below, only once free-access days run out.
+const BASE_TOP_LINKS = [
   { href: "/", label: "หน้าแรก" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/vocabulary", label: "คำศัพท์" },
   { href: "/verb-forms", label: "กริยา 3 ช่อง" },
-  { href: "/contribute", label: "✨ เพิ่มคำศัพท์" },
-  { href: "/donate", label: "🙏 สนับสนุน" },
 ];
+const CONTRIBUTE_LINK = { href: "/contribute", label: "✨ เพิ่มคำศัพท์" };
+const DONATE_LINK = { href: "/donate", label: "🙏 สนับสนุน" };
 
 // Practice dropdown links
 const practiceLinks = [
@@ -25,12 +26,6 @@ const practiceLinks = [
   { href: "/dictation", label: "🎧 Dictation" },
   { href: "/sentence-drill", label: "📖 Sentence Drill" },
   ...(FEATURE_FILL_BLANK_ENABLED ? [{ href: "/fill-blank", label: "📝 เติมคำ" }] : []),
-];
-
-// All links flat (for mobile)
-const allMobileLinks = [
-  ...topLinks,
-  ...practiceLinks,
 ];
 
 const practiceHrefs = new Set(practiceLinks.map((l) => l.href));
@@ -100,6 +95,13 @@ export default function Navbar() {
   };
 
   const isPracticeActive = practiceHrefs.has(pathname);
+
+  // Only surface "เพิ่มคำศัพท์" (contribute-for-days) once free-access days
+  // have run out — no point prompting for bonus days while some remain.
+  const topLinks =
+    daysLeft === null
+      ? [...BASE_TOP_LINKS, CONTRIBUTE_LINK, DONATE_LINK]
+      : [...BASE_TOP_LINKS, DONATE_LINK];
 
   return (
     <nav

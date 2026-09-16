@@ -59,11 +59,45 @@ export interface VocabListResponse extends ApiResponse<Vocabulary[]> {
 }
 
 export interface ConversationQuizCategory {
+  id: number;
   key: string;
   name: string;
   emoji: string | null;
+  displayOrder: number;
   totalQuestions: number;
 }
+
+export interface ConversationDialogueLineInput {
+  speaker: string;
+  text: string;
+}
+
+export interface CreateConversationCategoryPayload {
+  key: string;
+  name: string;
+  emoji?: string;
+  displayOrder?: number;
+}
+
+export interface UpdateConversationCategoryPayload {
+  name?: string;
+  emoji?: string;
+  displayOrder?: number;
+}
+
+export interface CreateConversationQuestionPayload {
+  categoryId: number;
+  speaker?: string;
+  prompt: string;
+  choices: string[];
+  correctAnswer: string;
+  naturalAnswer: string;
+  dialogueLines?: ConversationDialogueLineInput[];
+  orderIndex?: number;
+}
+
+export type UpdateConversationQuestionPayload =
+  Partial<CreateConversationQuestionPayload>;
 
 export interface ConversationQuizQuestion {
   id: number;
@@ -76,6 +110,7 @@ export interface ConversationQuizQuestion {
   correctAnswer: string;
   naturalAnswer: string;
   choiceScores: Record<string, number> | null;
+  dialogueLines: ConversationDialogueLineInput[];
   orderIndex: number;
 }
 
@@ -84,6 +119,7 @@ export type ConversationQuizCategoryResponse =
   ApiResponse<ConversationQuizCategory[]>;
 
 export interface ListeningLessonSummary {
+  id: number;
   key: string;
   title: string;
   emoji: string | null;
@@ -94,6 +130,7 @@ export interface ListeningLessonSummary {
 export type ListeningLessonsResponse = ApiResponse<ListeningLessonSummary[]>;
 
 export interface ListeningUnitSummary {
+  id: number;
   key: string;
   title: string;
   emoji: string | null;
@@ -103,6 +140,39 @@ export interface ListeningUnitSummary {
   endSeconds: number;
   totalLines: number;
 }
+
+export interface ListeningLineInput {
+  speaker: string;
+  textEn: string;
+  textTh?: string;
+}
+
+export interface CreateListeningLessonPayload {
+  key: string;
+  title: string;
+  emoji?: string;
+  displayOrder?: number;
+}
+
+export type UpdateListeningLessonPayload = Partial<
+  Omit<CreateListeningLessonPayload, 'key'>
+>;
+
+export interface CreateListeningUnitPayload {
+  lessonId: number;
+  key: string;
+  title: string;
+  emoji?: string;
+  displayOrder?: number;
+  videoId: string;
+  startSeconds: number;
+  endSeconds: number;
+  lines?: ListeningLineInput[];
+}
+
+export type UpdateListeningUnitPayload = Partial<
+  Omit<CreateListeningUnitPayload, 'key'>
+>;
 
 export interface ListeningLine {
   orderIndex: number;
@@ -237,9 +307,9 @@ export const RUNNABLE_SCRIPTS = [
   "vocab:generate",
   "fill:examples",
   "conversation:seed",
-  "conversation:reset",
   "conversation:generate",
   "listening:seed",
+  "listening:seed:lesson2",
 ] as const;
 
 export type RunnableScript = (typeof RUNNABLE_SCRIPTS)[number];
