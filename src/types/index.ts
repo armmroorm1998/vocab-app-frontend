@@ -291,6 +291,7 @@ export interface AdminUser {
   contributedWordsCount: number;
   freeAccessUntil: string | null;
   rewardedGoalStreak: number;
+  goalMetStreak: number;
   isAdmin: boolean;
 }
 

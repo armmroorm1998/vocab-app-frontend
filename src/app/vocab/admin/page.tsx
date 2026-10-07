@@ -1255,7 +1255,7 @@ function UsersTab() {
               <th style={thStyle}>UID</th>
               <th style={thStyle}>ชื่อ</th>
               <th style={thStyle}>คำที่เพิ่ม</th>
-              <th style={thStyle}>Streak reward</th>
+              <th style={thStyle} title="วันติดต่อกันที่ทำครบเป้า 10 ครั้ง/วัน — ครบทุก 7 วันได้ +7 วัน">Streak เป้าหมาย</th>
               <th style={thStyle}>หมดสิทธิ์วันที่</th>
               <th style={thStyle}>Admin</th>
               <th style={thStyle}></th>
@@ -1272,7 +1272,14 @@ function UsersTab() {
                   <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: "0.75rem" }}>{u.uid.slice(0, 10)}...</td>
                   <td style={tdStyle}>{u.displayName ?? "-"}</td>
                   <td style={tdStyle}>{u.contributedWordsCount}/10</td>
-                  <td style={tdStyle}>{u.rewardedGoalStreak}</td>
+                  <td style={tdStyle}>
+                    {u.goalMetStreak} วัน ({u.goalMetStreak % 7 || (u.goalMetStreak ? 7 : 0)}/7)
+                    {u.rewardedGoalStreak > 0 && (
+                      <div style={{ fontSize: "0.75rem", color: "#86efac" }}>
+                        ได้รางวัลล่าสุดที่ {u.rewardedGoalStreak} วัน
+                      </div>
+                    )}
+                  </td>
                   <td style={tdStyle}>{formatDate(u.freeAccessUntil)}</td>
                   <td style={tdStyle}>{u.isAdmin ? "⭐" : "-"}</td>
                   <td style={tdStyle}>
