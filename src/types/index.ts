@@ -311,6 +311,10 @@ export const RUNNABLE_SCRIPTS = [
   "conversation:generate",
   "listening:seed",
   "listening:seed:lesson2",
+  "listening:seed:lesson3",
+  "listening:seed:lesson4",
+  "listening:seed:lesson5",
+  "listening:seed:lesson6",
 ] as const;
 
 export type RunnableScript = (typeof RUNNABLE_SCRIPTS)[number];
